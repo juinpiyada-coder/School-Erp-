@@ -92,7 +92,7 @@ export default function SchoolAdminDashboard() {
       setRole('');
     }
 
-    axios.get(`${import.meta.env.VITE_API_BASE_URL}/academic/branches`)
+    axios.get(`${import.meta.env.VITE_API_BASE_URL}/academic/branches?limit=1000`)
       .then(res => {
         const list = Array.isArray(res.data) ? res.data : res.data?.data || [];
         setBranches(list);

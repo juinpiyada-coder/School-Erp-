@@ -1,4 +1,10 @@
-// Subject name: Roman/English letters and single spaces only.
+<?php
+
+require_once __DIR__ . '/MatrixModel.php';
+require_once __DIR__ . '/BoardModel.php';
+
+class AcademicController {
+    // Subject name: Roman/English letters and single spaces only.
     private function validateSubjectName($value) {
         $value = trim((string)$value);
         if ($value === '') {
@@ -10,12 +16,6 @@
         return $value;
     }
 
-<?php
-
-require_once __DIR__ . '/MatrixModel.php';
-require_once __DIR__ . '/BoardModel.php';
-
-class AcademicController {
     private $branchModel;
     private $roomModel;
     private $classModel;
@@ -170,8 +170,13 @@ class AcademicController {
                 break;
 
             case 'POST':
-                if ($this->user && $this->user['role_id'] === 'R_SCHOOLADMIN') {
-                    $data['SCHL_BR_CENTER_ID'] = ($this->user['school_id'] ?? $this->user['userId']);
+                $userRole = strtoupper($this->user['role_id'] ?? $this->user['user_role'] ?? '');
+                $isSchoolLevel = ($userRole === 'R_SCHOOLADMIN' || strpos($userRole, 'SCHOOL') !== false);
+                if ($this->user && $isSchoolLevel) {
+                    $effectiveSchoolId = $this->user['school_id'] ?? $this->user['userId'] ?? null;
+                    if ($effectiveSchoolId && (empty($data['SCHL_BR_CENTER_ID']) || $data['SCHL_BR_CENTER_ID'] === 'null')) {
+                        $data['SCHL_BR_CENTER_ID'] = $effectiveSchoolId;
+                    }
                 }
                 
                 $required = ['SCHL_BR_CENTER_ID', 'SCHL_BR_NM', 'SCHL_BR_CITY', 'SCHL_BR_STATE', 'SCHL_BR_PIN', 'SCHL_BR_COUNTRY', 'SCHL_BR_EMAILID', 'SCHL_BR_CONTACTNO'];
@@ -217,13 +222,12 @@ class AcademicController {
                     Response::error("Branch not found", 404);
                 }
                 
-                if ($this->user && $this->user['role_id'] === 'R_SCHOOLADMIN') {
-                    // Prevent school admins from transferring their branches to other schools
-                    $data['SCHL_BR_CENTER_ID'] = ($this->user['school_id'] ?? $this->user['userId']);
-                    
-                    // Also ensure they own the branch they are trying to update
-                    if ($existing['SCHL_BR_CENTER_ID'] !== ($this->user['school_id'] ?? $this->user['userId'])) {
-                        Response::error("Unauthorized to update this branch", 403);
+                $userRole = strtoupper($this->user['role_id'] ?? $this->user['user_role'] ?? '');
+                $isSchoolLevel = ($userRole === 'R_SCHOOLADMIN' || strpos($userRole, 'SCHOOL') !== false);
+                if ($this->user && $isSchoolLevel) {
+                    $schoolId = $this->user['school_id'] ?? $this->user['userId'] ?? null;
+                    if ($schoolId && (empty($data['SCHL_BR_CENTER_ID']) || $data['SCHL_BR_CENTER_ID'] === 'null')) {
+                        $data['SCHL_BR_CENTER_ID'] = $schoolId;
                     }
                 }
                 try {

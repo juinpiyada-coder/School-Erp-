@@ -73,7 +73,16 @@ export default function Roles() {
   async function handleSubmit(e) {
     e.preventDefault()
     const errs = {}
-    if (!editingRole && !formData.MAS_role_id.trim()) errs.MAS_role_id = 'Role ID is required.'
+    if (!editingRole) {
+      const roleId = formData.MAS_role_id.trim()
+      if (!roleId) {
+        errs.MAS_role_id = 'Role ID is required.'
+      } else if (/^\d+$/.test(roleId)) {
+        errs.MAS_role_id = 'Role ID cannot be numbers only. It must contain letters (e.g. R_TEACHER or ADMIN1).'
+      } else if (!/^[a-zA-Z0-9_-]+$/.test(roleId) || !/[a-zA-Z]/.test(roleId)) {
+        errs.MAS_role_id = 'Role ID must be alphanumeric and contain at least one letter.'
+      }
+    }
     if (!formData.MAS_role_DESC.trim()) errs.MAS_role_DESC = 'Role description is required.'
     else if (!/^[a-zA-Z\s]+$/.test(formData.MAS_role_DESC.trim())) errs.MAS_role_DESC = 'Role description can only contain letters and spaces.'
     if (formData.MAS_role_link && !/^\/[a-zA-Z0-9\/_\-]*$/.test(formData.MAS_role_link.trim())) errs.MAS_role_link = 'Link must start with "/" and contain only letters, numbers, /, _, -'

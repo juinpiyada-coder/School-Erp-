@@ -13,14 +13,30 @@ class BranchModel {
         $sql = "SELECT * FROM {$this->tableName} WHERE 1=1";
         $params = [];
         if ($user) {
-            if ($user['role_id'] === 'R_SCHOOLADMIN') {
-                $sql .= " AND SCHL_BR_CENTER_ID = ?";
-                $params[] = $user['userId'];
-            } elseif ($user['role_id'] === 'R_BRANCHADMIN') {
-                $sql .= " AND SCHL_BR_ID = ?";
-                $params[] = $user['userId'];
+            $roleId = strtoupper($user['role_id'] ?? $user['user_role'] ?? '');
+            if ($roleId === 'R_SCHOOLADMIN' || strpos($roleId, 'SCHOOL') !== false) {
+                $schoolId = $user['school_id'] ?? null;
+                $userId = $user['userId'] ?? null;
+                if ($schoolId && $userId && $schoolId !== $userId) {
+                    $sql .= " AND (SCHL_BR_CENTER_ID = ? OR SCHL_BR_CENTER_ID = ?)";
+                    $params[] = $schoolId;
+                    $params[] = $userId;
+                } else {
+                    $targetId = $schoolId ?: $userId;
+                    if ($targetId) {
+                        $sql .= " AND SCHL_BR_CENTER_ID = ?";
+                        $params[] = $targetId;
+                    }
+                }
+            } elseif ($roleId === 'R_BRANCHADMIN' || strpos($roleId, 'BRANCH') !== false) {
+                $branchId = $user['branch_id'] ?? $user['userId'] ?? null;
+                if ($branchId) {
+                    $sql .= " AND SCHL_BR_ID = ?";
+                    $params[] = $branchId;
+                }
             }
         }
+        $sql .= " ORDER BY SCHL_BR_ID DESC";
         if ($limit !== null && $offset !== null) {
             $sql .= " LIMIT " . (int)$limit . " OFFSET " . (int)$offset;
         }
@@ -34,12 +50,27 @@ class BranchModel {
         $sql = "SELECT COUNT(*) FROM {$this->tableName} WHERE 1=1";
         $params = [];
         if ($user) {
-            if ($user['role_id'] === 'R_SCHOOLADMIN') {
-                $sql .= " AND SCHL_BR_CENTER_ID = ?";
-                $params[] = $user['userId'];
-            } elseif ($user['role_id'] === 'R_BRANCHADMIN') {
-                $sql .= " AND SCHL_BR_ID = ?";
-                $params[] = $user['userId'];
+            $roleId = strtoupper($user['role_id'] ?? $user['user_role'] ?? '');
+            if ($roleId === 'R_SCHOOLADMIN' || strpos($roleId, 'SCHOOL') !== false) {
+                $schoolId = $user['school_id'] ?? null;
+                $userId = $user['userId'] ?? null;
+                if ($schoolId && $userId && $schoolId !== $userId) {
+                    $sql .= " AND (SCHL_BR_CENTER_ID = ? OR SCHL_BR_CENTER_ID = ?)";
+                    $params[] = $schoolId;
+                    $params[] = $userId;
+                } else {
+                    $targetId = $schoolId ?: $userId;
+                    if ($targetId) {
+                        $sql .= " AND SCHL_BR_CENTER_ID = ?";
+                        $params[] = $targetId;
+                    }
+                }
+            } elseif ($roleId === 'R_BRANCHADMIN' || strpos($roleId, 'BRANCH') !== false) {
+                $branchId = $user['branch_id'] ?? $user['userId'] ?? null;
+                if ($branchId) {
+                    $sql .= " AND SCHL_BR_ID = ?";
+                    $params[] = $branchId;
+                }
             }
         }
         $stmt = $this->db->prepare($sql);

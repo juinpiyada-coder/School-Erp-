@@ -19,6 +19,13 @@ class RoleService {
         $errors = [];
         if (empty($data['MAS_role_id'])) {
             $data['MAS_role_id'] = strtoupper(uniqid('ROLE_'));
+        } else {
+            $roleId = trim($data['MAS_role_id']);
+            if (ctype_digit($roleId) || preg_match('/^\d+$/', $roleId)) {
+                $errors['MAS_role_id'] = 'Role ID cannot be numbers only. It must contain letters.';
+            } elseif (!preg_match('/[a-zA-Z]/', $roleId)) {
+                $errors['MAS_role_id'] = 'Role ID must contain at least one letter.';
+            }
         }
 
         if (empty($data['MAS_role_DESC'])) {

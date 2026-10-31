@@ -19,8 +19,10 @@ export default function Branches() {
   const [search, setSearch] = useState('')
 
   const user = JSON.parse(sessionStorage.getItem('e_school_user') || '{}')
-  const isSchoolAdmin = (user.user_role || user.role_id) === 'R_SCHOOLADMIN' || user.role === 'R_SCHOOLADMIN'
-  const isBranchAdmin = (user.user_role || user.role_id) === 'R_BRANCHADMIN' || user.role === 'R_BRANCHADMIN'
+  const userRole = (user?.user_role || user?.role_id || user?.role || '').toLowerCase()
+  const isSuperAdmin = userRole.includes('super')
+  const isSchoolAdmin = userRole.includes('school') && !isSuperAdmin
+  const isBranchAdmin = userRole.includes('branch') && !isSuperAdmin
 
   const [formData, setFormData] = useState({
     SCHL_BR_ID: '',
@@ -48,9 +50,15 @@ export default function Branches() {
       const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/auth/school`)
       let list = Array.isArray(res.data) ? res.data : res.data?.data || []
       
-      if (isSchoolAdmin) {
-          const centerId = String((user.user_id || user.id))
-          list = list.filter(s => String(s.schl_mn_id || s.SCHL_MN_ID) === centerId)
+      const currentSchoolId = String(user.school_id || user.SCHL_ID || user.user_school_id || user.user_id || user.id || '')
+      if (isSchoolAdmin && currentSchoolId) {
+          const matched = list.filter(s => {
+            const sid = String(s.schl_mn_id || s.SCHL_MN_ID || '')
+            return sid === currentSchoolId
+          })
+          if (matched.length > 0) {
+            list = matched
+          }
       }
       
       setSchools(list)
@@ -62,18 +70,8 @@ export default function Branches() {
   async function loadBranches() {
     try {
       setLoading(true)
-      const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/academic/branches`)
-      let list = Array.isArray(res.data) ? res.data : res.data?.data || []
-      
-      const centerId = String(user.user_id || user.id || user.userId || '')
-      if (isSchoolAdmin && centerId) {
-         const filtered = list.filter(b => String(b.SCHL_BR_CENTER_ID || b.schl_br_center_id) === centerId)
-         if (filtered.length > 0) list = filtered
-      } else if (isBranchAdmin && centerId) {
-         const filtered = list.filter(b => String(b.SCHL_BR_ID || b.schl_br_id) === centerId)
-         if (filtered.length > 0) list = filtered
-      }
-      
+      const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/academic/branches?limit=1000`)
+      const list = Array.isArray(res.data) ? res.data : res.data?.data || []
       setBranches(list)
     } catch (err) {
       toast.error('Failed to load branches')
@@ -86,11 +84,12 @@ export default function Branches() {
   function openModal(branch = null) {
     setShowPassword(false)
     setErrors({})
+    const defaultSchoolCenterId = user.school_id || user.SCHL_ID || user.user_school_id || user.user_id || user.id || (schools.length > 0 ? (schools[0].schl_mn_id || schools[0].SCHL_MN_ID) : '')
     if (branch) {
       setEditingBranch(branch)
       setFormData({
         SCHL_BR_ID: branch.SCHL_BR_ID || branch.schl_br_id || '',
-        SCHL_BR_CENTER_ID: branch.SCHL_BR_CENTER_ID || branch.schl_br_center_id || '',
+        SCHL_BR_CENTER_ID: branch.SCHL_BR_CENTER_ID || branch.schl_br_center_id || defaultSchoolCenterId,
         SCHL_BR_NM: branch.SCHL_BR_NM || branch.schl_br_nm || '',
         SCHL_BR_ADDRESS: branch.SCHL_BR_ADDRESS || branch.schl_br_address || '',
         SCHL_BR_CITY: branch.SCHL_BR_CITY || branch.schl_br_city || '',
@@ -106,10 +105,19 @@ export default function Branches() {
     } else {
       setEditingBranch(null)
       setFormData({
-        SCHL_BR_ID: '', SCHL_BR_CENTER_ID: isSchoolAdmin ? ((user.user_id || user.id) || '') : '', SCHL_BR_NM: '', SCHL_BR_ADDRESS: '',
-        SCHL_BR_CITY: '', SCHL_BR_STATE: '', SCHL_BR_PIN: '', SCHL_BR_COUNTRY: 'India',
-        SCHL_BR_MEDIUM: '', SCHL_BR_BOARD: '',
-        SCHL_BR_EMAILID: '', SCHL_BR_CONTACTNO: '', SCHL_BR_PASSWORD: ''
+        SCHL_BR_ID: '',
+        SCHL_BR_CENTER_ID: isSchoolAdmin ? defaultSchoolCenterId : (schools[0]?.schl_mn_id || schools[0]?.SCHL_MN_ID || ''),
+        SCHL_BR_NM: '',
+        SCHL_BR_ADDRESS: '',
+        SCHL_BR_CITY: '',
+        SCHL_BR_STATE: '',
+        SCHL_BR_PIN: '',
+        SCHL_BR_COUNTRY: 'India',
+        SCHL_BR_MEDIUM: '',
+        SCHL_BR_BOARD: '',
+        SCHL_BR_EMAILID: '',
+        SCHL_BR_CONTACTNO: '',
+        SCHL_BR_PASSWORD: ''
       })
     }
     setIsModalOpen(true)
