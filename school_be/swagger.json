@@ -1,0 +1,2507 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "School ERP API",
+    "description": "API for School Management System with authentication, student management, and academic operations",
+    "version": "1.0.0",
+    "contact": {
+      "name": "School ERP Team",
+      "email": "support@schoolerp.com"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://myskool.co.in/SMS/school_be",
+      "description": "Production Server"
+    },
+    {
+      "url": "http://localhost:8000",
+      "description": "Local Dev Server (php -S / XAMPP)"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Authentication",
+      "description": "User authentication and authorization management"
+    },
+    {
+      "name": "Roles",
+      "description": "Role management operations"
+    },
+    {
+      "name": "Role Links",
+      "description": "Role navigation links and menu configuration (SM_ROLE_LINKS)"
+    },
+    {
+      "name": "Users",
+      "description": "User management operations"
+    },
+    {
+      "name": "School",
+      "description": "School configuration management"
+    },
+    {
+      "name": "Students",
+      "description": "Student management operations"
+    },
+    {
+      "name": "Parents",
+      "description": "Parent management operations"
+    },
+    {
+      "name": "Schedules",
+      "description": "Class schedule management"
+    },
+    {
+      "name": "Attendance",
+      "description": "Student attendance tracking"
+    },
+    {
+      "name": "Staff",
+      "description": "Staff and teacher management operations"
+    },
+    {
+      "name": "Attendance (Standalone Scripts)",
+      "description": "teacher_attendance_api.php ebong student_attendance_api.php \u2014 eguli index.php gateway-r moddhe wired na, nijeder file-path e directly serve hoy (device biometric + tick-mark attendance er jonyo)."
+    }
+  ],
+  "paths": {
+    "/api/auth/roles": {
+      "get": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Get all roles",
+        "description": "Retrieve a list of all available roles",
+        "responses": {
+          "200": {
+            "description": "Roles retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "mas_role_id": {
+                            "type": "string"
+                          },
+                          "mas_role_desc": {
+                            "type": "string"
+                          },
+                          "mas_role_link": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Create a new role",
+        "description": "Create a new role with the provided details",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "mas_role_id",
+                  "mas_role_desc"
+                ],
+                "properties": {
+                  "mas_role_id": {
+                    "type": "string",
+                    "example": "admin"
+                  },
+                  "mas_role_desc": {
+                    "type": "string",
+                    "example": "Administrator role"
+                  },
+                  "mas_role_link": {
+                    "type": "string",
+                    "example": "/admin"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Role created successfully"
+          },
+          "400": {
+            "description": "Validation error"
+          }
+        }
+      }
+    },
+    "/api/auth/roles/{id}": {
+      "get": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Get role by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Role ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Role retrieved successfully"
+          },
+          "404": {
+            "description": "Role not found"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Update role",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "mas_role_desc": {
+                    "type": "string"
+                  },
+                  "mas_role_link": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Role updated successfully"
+          },
+          "404": {
+            "description": "Role not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Delete role",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Role deleted successfully"
+          },
+          "400": {
+            "description": "Cannot delete role - in use"
+          }
+        }
+      }
+    },
+    "/api/auth/roles/{id}/links": {
+      "get": {
+        "tags": [
+          "Role Links"
+        ],
+        "summary": "Get links assigned to a role",
+        "description": "Retrieve all navigation links configured for the given role ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Role ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Role links retrieved successfully"
+          }
+        }
+      }
+    },
+    "/api/auth/role-links": {
+      "get": {
+        "tags": [
+          "Role Links"
+        ],
+        "summary": "Get all role links",
+        "description": "Retrieve a list of all role links or filter by role_id query parameter",
+        "parameters": [
+          {
+            "name": "role_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Optional Role ID to filter links"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["ACTIVE", "INACTIVE"]
+            },
+            "description": "Optional status filter (ACTIVE or INACTIVE)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Role links retrieved successfully"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Role Links"
+        ],
+        "summary": "Create a new role link",
+        "description": "Create a new menu / navigation link assigned to a role (SM_ROLE_LINKS)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "SM_RL_ROLE_ID",
+                  "SM_RL_LINK_DESC",
+                  "SM_RL_LINK_URL"
+                ],
+                "properties": {
+                  "SM_RL_ROLE_ID": {
+                    "type": "string",
+                    "example": "R_SCHOOLADMIN"
+                  },
+                  "SM_RL_LINK_DESC": {
+                    "type": "string",
+                    "example": "Student Directory"
+                  },
+                  "SM_RL_LINK_URL": {
+                    "type": "string",
+                    "example": "/student/students"
+                  },
+                  "SM_RL_LINK_SRL": {
+                    "type": "integer",
+                    "example": 1
+                  },
+                  "SM_RL_SUBMENU": {
+                    "type": "string",
+                    "example": "Students"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Role link created successfully"
+          },
+          "400": {
+            "description": "Validation error"
+          }
+        }
+      }
+    },
+    "/api/auth/role-links/{id}": {
+      "get": {
+        "tags": [
+          "Role Links"
+        ],
+        "summary": "Get role link by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Role Link ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Role link retrieved successfully"
+          },
+          "404": {
+            "description": "Role link not found"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Role Links"
+        ],
+        "summary": "Update role link",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "SM_RL_ROLE_ID": {
+                    "type": "string"
+                  },
+                  "SM_RL_LINK_DESC": {
+                    "type": "string"
+                  },
+                  "SM_RL_LINK_URL": {
+                    "type": "string"
+                  },
+                  "SM_RL_LINK_SRL": {
+                    "type": "integer"
+                  },
+                  "SM_RL_SUBMENU": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Role link updated successfully"
+          },
+          "404": {
+            "description": "Role link not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Role Links"
+        ],
+        "summary": "Delete role link",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Role link deleted successfully"
+          },
+          "404": {
+            "description": "Role link not found"
+          }
+        }
+      }
+    },
+    "/api/auth/role-links/{id}/toggle-status": {
+      "patch": {
+        "tags": [
+          "Role Links"
+        ],
+        "summary": "Toggle active/inactive status of a role link",
+        "description": "Quickly switch a role link's status between ACTIVE and INACTIVE",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Role Link ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Status toggled successfully"
+          },
+          "404": {
+            "description": "Role link not found"
+          }
+        }
+      }
+    },
+    "/api/auth/users": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Get all users",
+        "responses": {
+          "200": {
+            "description": "Users retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "user_id": {
+                            "type": "string"
+                          },
+                          "user_email_id": {
+                            "type": "string"
+                          },
+                          "user_cr_dt": {
+                            "type": "string",
+                            "format": "date"
+                          },
+                          "user_role": {
+                            "type": "string"
+                          },
+                          "user_img": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Create a new user",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "user_id",
+                  "user_email_id",
+                  "user_passwd",
+                  "user_role"
+                ],
+                "properties": {
+                  "user_id": {
+                    "type": "string",
+                    "example": "user001"
+                  },
+                  "user_email_id": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "user@example.com"
+                  },
+                  "user_passwd": {
+                    "type": "string",
+                    "format": "password",
+                    "example": "password123"
+                  },
+                  "user_cr_dt": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "user_role": {
+                    "type": "string",
+                    "example": "admin"
+                  },
+                  "user_img": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User created successfully"
+          },
+          "400": {
+            "description": "Validation error"
+          }
+        }
+      }
+    },
+    "/api/auth/users/{id}": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Get user by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User retrieved successfully"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Update user",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "user_email_id": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "user_passwd": {
+                    "type": "string",
+                    "format": "password"
+                  },
+                  "user_cr_dt": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "user_role": {
+                    "type": "string"
+                  },
+                  "user_img": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User updated successfully"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Delete user",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User deleted successfully"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        }
+      }
+    },
+    "/api/auth/school": {
+      "get": {
+        "tags": [
+          "School"
+        ],
+        "summary": "Get all schools",
+        "responses": {
+          "200": {
+            "description": "Schools retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "schl_mn_id": {
+                            "type": "string"
+                          },
+                          "schl_mn_nm": {
+                            "type": "string"
+                          },
+                          "schl_mn_address": {
+                            "type": "string"
+                          },
+                          "schl_mn_city": {
+                            "type": "string"
+                          },
+                          "schl_mn_state": {
+                            "type": "string"
+                          },
+                          "schl_mn_pin": {
+                            "type": "integer"
+                          },
+                          "schl_mn_country": {
+                            "type": "string"
+                          },
+                          "schl_mn_emailid": {
+                            "type": "string"
+                          },
+                          "schl_mn_contactno": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "School"
+        ],
+        "summary": "Create a new school",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "schl_mn_id",
+                  "schl_mn_nm",
+                  "schl_mn_city",
+                  "schl_mn_state",
+                  "schl_mn_pin",
+                  "schl_mn_country",
+                  "schl_mn_emailid",
+                  "schl_mn_contactno"
+                ],
+                "properties": {
+                  "schl_mn_id": {
+                    "type": "string",
+                    "example": "SCH001"
+                  },
+                  "schl_mn_nm": {
+                    "type": "string",
+                    "example": "ABC School"
+                  },
+                  "schl_mn_address": {
+                    "type": "string",
+                    "example": "123 Main Street"
+                  },
+                  "schl_mn_city": {
+                    "type": "string",
+                    "example": "New York"
+                  },
+                  "schl_mn_state": {
+                    "type": "string",
+                    "example": "NY"
+                  },
+                  "schl_mn_pin": {
+                    "type": "integer",
+                    "example": 10001
+                  },
+                  "schl_mn_country": {
+                    "type": "string",
+                    "example": "USA"
+                  },
+                  "schl_mn_emailid": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "school@example.com"
+                  },
+                  "schl_mn_contactno": {
+                    "type": "string",
+                    "example": "+1234567890"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "School created successfully"
+          },
+          "400": {
+            "description": "Validation error"
+          }
+        }
+      }
+    },
+    "/api/auth/school/{id}": {
+      "get": {
+        "tags": [
+          "School"
+        ],
+        "summary": "Get school by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "School retrieved successfully"
+          },
+          "404": {
+            "description": "School not found"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "School"
+        ],
+        "summary": "Update school",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "schl_mn_nm": {
+                    "type": "string"
+                  },
+                  "schl_mn_address": {
+                    "type": "string"
+                  },
+                  "schl_mn_city": {
+                    "type": "string"
+                  },
+                  "schl_mn_state": {
+                    "type": "string"
+                  },
+                  "schl_mn_pin": {
+                    "type": "integer"
+                  },
+                  "schl_mn_country": {
+                    "type": "string"
+                  },
+                  "schl_mn_emailid": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "schl_mn_contactno": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "School updated successfully"
+          },
+          "404": {
+            "description": "School not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "School"
+        ],
+        "summary": "Delete school",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "School deleted successfully"
+          },
+          "404": {
+            "description": "School not found"
+          }
+        }
+      }
+    },
+    "/api/student/parents": {
+      "get": {
+        "tags": [
+          "Parents"
+        ],
+        "summary": "Get all parents",
+        "responses": {
+          "200": {
+            "description": "Parents retrieved successfully"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Parents"
+        ],
+        "summary": "Create a new parent",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "PRNT_NM"
+                ],
+                "properties": {
+                  "PRNT_ID": {
+                    "type": "string"
+                  },
+                  "PRNT_NM": {
+                    "type": "string"
+                  },
+                  "PRNT_EMAIL": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "PRNT_CONTACT_NO": {
+                    "type": "string"
+                  },
+                  "PRNT_ADDRESS": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Parent created successfully"
+          }
+        }
+      }
+    },
+    "/api/student/parents/{id}": {
+      "get": {
+        "tags": [
+          "Parents"
+        ],
+        "summary": "Get parent by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Parent retrieved successfully"
+          },
+          "404": {
+            "description": "Parent not found"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Parents"
+        ],
+        "summary": "Update parent",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "PRNT_NM": {
+                    "type": "string"
+                  },
+                  "PRNT_EMAIL": {
+                    "type": "string"
+                  },
+                  "PRNT_CONTACT_NO": {
+                    "type": "string"
+                  },
+                  "PRNT_ADDRESS": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Parent updated successfully"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Parents"
+        ],
+        "summary": "Delete parent",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Parent deleted successfully"
+          }
+        }
+      }
+    },
+    "/api/student/students": {
+      "get": {
+        "tags": [
+          "Students"
+        ],
+        "summary": "Get all students",
+        "responses": {
+          "200": {
+            "description": "Students retrieved successfully"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Students"
+        ],
+        "summary": "Create a new student",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "STU_NM"
+                ],
+                "properties": {
+                  "STU_ID": {
+                    "type": "string"
+                  },
+                  "STU_NM": {
+                    "type": "string"
+                  },
+                  "STU_ROLL_NO": {
+                    "type": "string"
+                  },
+                  "STU_EMAIL": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "STU_CONTACT_NO": {
+                    "type": "string"
+                  },
+                  "STU_DOB": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "STU_CLASS_REF_ID": {
+                    "type": "string"
+                  },
+                  "STU_PRNT_REF_ID": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Student created successfully"
+          }
+        }
+      }
+    },
+    "/api/student/students/{id}": {
+      "get": {
+        "tags": [
+          "Students"
+        ],
+        "summary": "Get student by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Student retrieved successfully"
+          },
+          "404": {
+            "description": "Student not found"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Students"
+        ],
+        "summary": "Update student",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "STU_NM": {
+                    "type": "string"
+                  },
+                  "STU_ROLL_NO": {
+                    "type": "string"
+                  },
+                  "STU_EMAIL": {
+                    "type": "string"
+                  },
+                  "STU_CONTACT_NO": {
+                    "type": "string"
+                  },
+                  "STU_DOB": {
+                    "type": "string"
+                  },
+                  "STU_CLASS_REF_ID": {
+                    "type": "string"
+                  },
+                  "STU_PRNT_REF_ID": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Student updated successfully"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Students"
+        ],
+        "summary": "Delete student",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Student deleted successfully"
+          }
+        }
+      }
+    },
+    "/api/student/schedules": {
+      "get": {
+        "tags": [
+          "Schedules"
+        ],
+        "summary": "Get all schedules",
+        "responses": {
+          "200": {
+            "description": "Schedules retrieved successfully"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Schedules"
+        ],
+        "summary": "Create a new schedule",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "SCHLDL_SUB_NM"
+                ],
+                "properties": {
+                  "SCHLDL_ID": {
+                    "type": "string"
+                  },
+                  "SCHLDL_CLS_REF_ID": {
+                    "type": "string"
+                  },
+                  "SCHLDL_SUB_NM": {
+                    "type": "string"
+                  },
+                  "SCHLDL_TCHR_NM": {
+                    "type": "string"
+                  },
+                  "SCHLDL_DAY": {
+                    "type": "string"
+                  },
+                  "SCHLDL_START_TM": {
+                    "type": "string",
+                    "format": "time"
+                  },
+                  "SCHLDL_END_TM": {
+                    "type": "string",
+                    "format": "time"
+                  },
+                  "SCHLDL_RM_REF_ID": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Schedule created successfully"
+          }
+        }
+      }
+    },
+    "/api/student/schedules/{id}": {
+      "get": {
+        "tags": [
+          "Schedules"
+        ],
+        "summary": "Get schedule by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Schedule retrieved successfully"
+          },
+          "404": {
+            "description": "Schedule not found"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Schedules"
+        ],
+        "summary": "Update schedule",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "SCHLDL_CLS_REF_ID": {
+                    "type": "string"
+                  },
+                  "SCHLDL_SUB_NM": {
+                    "type": "string"
+                  },
+                  "SCHLDL_TCHR_NM": {
+                    "type": "string"
+                  },
+                  "SCHLDL_DAY": {
+                    "type": "string"
+                  },
+                  "SCHLDL_START_TM": {
+                    "type": "string"
+                  },
+                  "SCHLDL_END_TM": {
+                    "type": "string"
+                  },
+                  "SCHLDL_RM_REF_ID": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Schedule updated successfully"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Schedules"
+        ],
+        "summary": "Delete schedule",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Schedule deleted successfully"
+          }
+        }
+      }
+    },
+    "/api/student/attendance": {
+      "get": {
+        "tags": [
+          "Attendance"
+        ],
+        "summary": "Get all attendance records",
+        "responses": {
+          "200": {
+            "description": "Attendance records retrieved successfully"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Attendance"
+        ],
+        "summary": "Create a new attendance record",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "ATT_STU_REF_ID",
+                  "ATT_DT",
+                  "ATT_STATUS"
+                ],
+                "properties": {
+                  "ATT_ID": {
+                    "type": "string"
+                  },
+                  "ATT_STU_REF_ID": {
+                    "type": "string"
+                  },
+                  "ATT_DT": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "ATT_STATUS": {
+                    "type": "string",
+                    "enum": [
+                      "Present",
+                      "Absent",
+                      "Late"
+                    ]
+                  },
+                  "ATT_REMARKS": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Attendance record created successfully"
+          }
+        }
+      }
+    },
+    "/api/student/attendance/{id}": {
+      "get": {
+        "tags": [
+          "Attendance"
+        ],
+        "summary": "Get attendance record by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Attendance record retrieved successfully"
+          },
+          "404": {
+            "description": "Attendance record not found"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Attendance"
+        ],
+        "summary": "Update attendance record",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "ATT_STU_REF_ID": {
+                    "type": "string"
+                  },
+                  "ATT_DT": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "ATT_STATUS": {
+                    "type": "string"
+                  },
+                  "ATT_REMARKS": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Attendance record updated successfully"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Attendance"
+        ],
+        "summary": "Delete attendance record",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Attendance record deleted successfully"
+          }
+        }
+      }
+    },
+    "/api/staff/teachers": {
+      "get": {
+        "tags": [
+          "Staff"
+        ],
+        "summary": "Get all teachers",
+        "responses": {
+          "200": {
+            "description": "Teachers retrieved successfully"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Staff"
+        ],
+        "summary": "Create a new teacher",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "TCHR_NM"
+                ],
+                "properties": {
+                  "TCHR_ID": {
+                    "type": "string"
+                  },
+                  "TCHR_NM": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Teacher created successfully"
+          },
+          "400": {
+            "description": "Validation error"
+          }
+        }
+      }
+    },
+    "/api/staff/teachers/{id}": {
+      "get": {
+        "tags": [
+          "Staff"
+        ],
+        "summary": "Get teacher by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Teacher retrieved successfully"
+          },
+          "404": {
+            "description": "Teacher not found"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Staff"
+        ],
+        "summary": "Update teacher",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "TCHR_NM": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Teacher updated successfully"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Staff"
+        ],
+        "summary": "Delete teacher",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Teacher deleted successfully"
+          }
+        }
+      }
+    },
+    "/api/staff/subjects": {
+      "get": {
+        "tags": [
+          "Staff"
+        ],
+        "summary": "Get all subjects",
+        "responses": {
+          "200": {
+            "description": "Subjects retrieved successfully"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Staff"
+        ],
+        "summary": "Create a new subject",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "SUB_NM"
+                ],
+                "properties": {
+                  "SUB_ID": {
+                    "type": "string"
+                  },
+                  "SUB_NM": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Subject created successfully"
+          }
+        }
+      }
+    },
+    "/api/staff/subjects/{id}": {
+      "get": {
+        "tags": [
+          "Staff"
+        ],
+        "summary": "Get subject by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Subject retrieved successfully"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Staff"
+        ],
+        "summary": "Update subject",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "SUB_NM": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Subject updated successfully"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Staff"
+        ],
+        "summary": "Delete subject",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Subject deleted successfully"
+          }
+        }
+      }
+    },
+    "/api/staff/mappings": {
+      "get": {
+        "tags": [
+          "Staff"
+        ],
+        "summary": "Get all teacher-subject mappings",
+        "responses": {
+          "200": {
+            "description": "Mappings retrieved successfully"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Staff"
+        ],
+        "summary": "Create a new mapping",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "TCHR_REF_ID",
+                  "SUB_REF_ID"
+                ],
+                "properties": {
+                  "MAP_ID": {
+                    "type": "string"
+                  },
+                  "TCHR_REF_ID": {
+                    "type": "string"
+                  },
+                  "SUB_REF_ID": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Mapping created successfully"
+          },
+          "400": {
+            "description": "Validation error"
+          }
+        }
+      }
+    },
+    "/api/staff/mappings/{id}": {
+      "get": {
+        "tags": [
+          "Staff"
+        ],
+        "summary": "Get mapping by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Mapping retrieved successfully"
+          },
+          "404": {
+            "description": "Mapping not found"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Staff"
+        ],
+        "summary": "Update mapping",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "TCHR_REF_ID": {
+                    "type": "string"
+                  },
+                  "SUB_REF_ID": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Mapping updated successfully"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Staff"
+        ],
+        "summary": "Delete mapping",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Mapping deleted successfully"
+          }
+        }
+      }
+    },
+    "/api/staff/attendance": {
+      "get": {
+        "tags": [
+          "Staff"
+        ],
+        "summary": "Get all teacher attendance records",
+        "responses": {
+          "200": {
+            "description": "Attendance records retrieved successfully"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Staff"
+        ],
+        "summary": "Create a new teacher attendance record",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "TCHR_REF_ID",
+                  "ATT_DT",
+                  "ATT_STATUS"
+                ],
+                "properties": {
+                  "ATT_ID": {
+                    "type": "string"
+                  },
+                  "TCHR_REF_ID": {
+                    "type": "string"
+                  },
+                  "ATT_DT": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "ATT_STATUS": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Attendance created successfully"
+          },
+          "400": {
+            "description": "Validation error"
+          }
+        }
+      }
+    },
+    "/api/staff/attendance/{id}": {
+      "get": {
+        "tags": [
+          "Staff"
+        ],
+        "summary": "Get teacher attendance by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Attendance retrieved successfully"
+          },
+          "404": {
+            "description": "Attendance not found"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Staff"
+        ],
+        "summary": "Update teacher attendance",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "TCHR_REF_ID": {
+                    "type": "string"
+                  },
+                  "ATT_DT": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "ATT_STATUS": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Attendance updated successfully"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Staff"
+        ],
+        "summary": "Delete teacher attendance",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Attendance deleted successfully"
+          }
+        }
+      }
+    },
+    "/teacher_attendance_api.php": {
+      "get": {
+        "tags": [
+          "Attendance (Standalone Scripts)"
+        ],
+        "summary": "Teacher attendance \u2014 summary / branch_rule dekha (GET actions)",
+        "description": "action=summary -> ekta din-er shob teacher-er attendance summary dey (query: date [YYYY-MM-DD, default gotokal], branch_id [optional]). Bearer token lagbe.\n\naction=branch_rule -> ekta branch-er full/half-day rule dekhay (query: branch_id [required]). Bearer token lagbe.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "action",
+            "in": "query",
+            "required": true,
+            "description": "Kon operation call hobe.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "summary",
+                "branch_rule"
+              ]
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "required": false,
+            "description": "shudhu action=summary er jonyo. Default: gotokal.",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "branch_id",
+            "in": "query",
+            "required": false,
+            "description": "action=branch_rule e required, action=summary e optional filter.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Missing required param (e.g. branch_id for branch_rule)"
+          },
+          "401": {
+            "description": "Bearer token missing/expired"
+          },
+          "404": {
+            "description": "Unknown action"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Attendance (Standalone Scripts)"
+        ],
+        "summary": "Teacher attendance \u2014 checkin / checkout / run_batch / branch_rule set / mark_student_attendance (POST actions)",
+        "description": "action=checkin / checkout -> biometric device theke IN/OUT punch. X-Device-Key header lagbe (Bearer token na). Body: {\"teacher_id\": \"...\"}\n\naction=run_batch -> raat-er batch job manually trigger kora (admin-only role: R_SUPERADMIN / R_SCHOOLADMIN / R_BRANCHADMIN). Body: {\"date\": \"YYYY-MM-DD\"} (optional, default gotokal).\n\naction=branch_rule -> branch-wise full/half-day rule set kora (admin-only). Body: {\"branch_id\", \"full_day_min_hrs\", \"half_day_min_hrs\"}.\n\naction=mark_student_attendance -> ekta single student-er class-wise attendance mark kora (shudhu shei class-e assigned teacher nijer login diye korte parbe). Body: {\"schedule_id\"/\"SCHL_CLS_SCHLDL_ID\", \"student_id\"/\"STU_STU_ID\", \"date\"/\"ATT_DT\" (optional), \"status\"/\"STU_PRES\" (optional, default Present)}.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "action",
+            "in": "query",
+            "required": true,
+            "description": "Kon operation call hobe.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "checkin",
+                "checkout",
+                "run_batch",
+                "summary",
+                "branch_rule",
+                "mark_student_attendance"
+              ]
+            }
+          },
+          {
+            "name": "X-Device-Key",
+            "in": "header",
+            "required": false,
+            "description": "Biometric device shared secret. .env-e ATTENDANCE_DEVICE_KEY set na thakle default 'CHANGE_ME_DEVICE_KEY' babohar hoy \u2014 deploy korar age eta must set korte hobe.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "Fields vary by action \u2014 dekho operation description e.",
+                "properties": {
+                  "teacher_id": {
+                    "type": "string",
+                    "description": "checkin/checkout er jonyo"
+                  },
+                  "date": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "run_batch er jonyo (optional)"
+                  },
+                  "branch_id": {
+                    "type": "string",
+                    "description": "branch_rule (POST) er jonyo, required"
+                  },
+                  "full_day_min_hrs": {
+                    "type": "number",
+                    "description": "branch_rule (POST), default 6.00"
+                  },
+                  "half_day_min_hrs": {
+                    "type": "number",
+                    "description": "branch_rule (POST), default 3.00"
+                  },
+                  "schedule_id": {
+                    "type": "string",
+                    "description": "mark_student_attendance er jonyo (SCHL_CLS_SCHLDL_ID)"
+                  },
+                  "student_id": {
+                    "type": "string",
+                    "description": "mark_student_attendance er jonyo (STU_STU_ID)"
+                  },
+                  "status": {
+                    "type": "string",
+                    "description": "mark_student_attendance, default 'Present'"
+                  }
+                }
+              },
+              "examples": {
+                "checkin": {
+                  "value": {
+                    "teacher_id": "TCHR001"
+                  }
+                },
+                "run_batch": {
+                  "value": {
+                    "date": "2026-08-24"
+                  }
+                },
+                "set_branch_rule": {
+                  "value": {
+                    "branch_id": "BR001",
+                    "full_day_min_hrs": 6,
+                    "half_day_min_hrs": 3
+                  }
+                },
+                "mark_student_attendance": {
+                  "value": {
+                    "schedule_id": "SCH001",
+                    "student_id": "STU001",
+                    "status": "Present"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "201": {
+            "description": "Created (checkin/checkout)"
+          },
+          "400": {
+            "description": "Validation error (missing required field)"
+          },
+          "401": {
+            "description": "Missing/invalid X-Device-Key or Bearer token"
+          },
+          "403": {
+            "description": "Role not permitted, or teacher not assigned to this class"
+          },
+          "404": {
+            "description": "Unknown action"
+          }
+        }
+      }
+    },
+    "/student_attendance_api.php": {
+      "get": {
+        "tags": [
+          "Attendance (Standalone Scripts)"
+        ],
+        "summary": "Class roster (tick-mark attendance list) dekha",
+        "description": "action=class_roster -> ekta class-schedule-er shob student ebong tader aajker attendance status (Present/Absent/Not Marked) dekhay \u2014 higher-class (11-12) manual tick-mark UI-r jonyo. Login-kora teacher shei schedule-e assigned na hole 403 dey. Query: schedule_id (required), date (optional, default aaj).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "action",
+            "in": "query",
+            "required": true,
+            "description": "class_roster (shudhu GET-e available)",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "class_roster"
+              ]
+            }
+          },
+          {
+            "name": "schedule_id",
+            "in": "query",
+            "required": true,
+            "description": "SCHL_CLS_SCHLDL_ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Roster returned"
+          },
+          "400": {
+            "description": "schedule_id missing"
+          },
+          "401": {
+            "description": "Bearer token missing/expired"
+          },
+          "403": {
+            "description": "Login-kora user Teacher record-e linked na, othoba ei class-e assigned na"
+          },
+          "404": {
+            "description": "Class schedule khuje paoya jaini"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Attendance (Standalone Scripts)"
+        ],
+        "summary": "Class-wise ba single-student attendance mark kora (tick-mark save)",
+        "description": "action=mark_class_attendance -> pura class-er tick-marked attendance ekbare save kora. Body: {\"schedule_id\", \"date\" (optional), \"students\": [{\"student_id\", \"status\"}, ...]}.\n\naction=mark_student_attendance -> EK student-er attendance (single row). Body: {\"schedule_id\"/\"SCHL_CLS_SCHLDL_ID\", \"student_id\"/\"STU_STU_ID\", \"date\"/\"ATT_DT\" (optional), \"status\"/\"STU_PRES\" (optional, default Present)}.\n\nDuitai case-e: login-kora teacher-ke shei class-schedule-e assigned thakte hobe, noyle 403. STU_TCHR_ID always JWT theke resolve hoy, client theke pathano jay na.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "action",
+            "in": "query",
+            "required": true,
+            "description": "mark_class_attendance ba mark_student_attendance",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "mark_class_attendance",
+                "mark_student_attendance"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "schedule_id": {
+                    "type": "string"
+                  },
+                  "date": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "status": {
+                    "type": "string",
+                    "description": "mark_student_attendance-e, default 'Present'"
+                  },
+                  "student_id": {
+                    "type": "string",
+                    "description": "mark_student_attendance-e"
+                  },
+                  "students": {
+                    "type": "array",
+                    "description": "mark_class_attendance-e",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "student_id": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "examples": {
+                "mark_class_attendance": {
+                  "value": {
+                    "schedule_id": "SCH001",
+                    "date": "2026-08-25",
+                    "students": [
+                      {
+                        "student_id": "STU001",
+                        "status": "Present"
+                      },
+                      {
+                        "student_id": "STU002",
+                        "status": "Absent"
+                      }
+                    ]
+                  }
+                },
+                "mark_student_attendance": {
+                  "value": {
+                    "schedule_id": "SCH001",
+                    "student_id": "STU001",
+                    "status": "Present"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Saved successfully"
+          },
+          "400": {
+            "description": "Validation error (missing schedule_id / students / student_id)"
+          },
+          "401": {
+            "description": "Bearer token missing/expired"
+          },
+          "403": {
+            "description": "Login-kora user linked na, othoba ei class-e assigned na"
+          },
+          "404": {
+            "description": "Unknown action"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT token for authentication"
+      }
+    }
+  }
+}

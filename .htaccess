@@ -1,0 +1,22 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    # RewriteBase disabled for universal XAMPP & standalone compatibility
+    # RewriteBase /SMS/
+
+    # 1. Route API requests to backend
+    RewriteRule ^api/(.*)$ school_be/index.php [QSA,L]
+
+    # 2. If it's the backend folder directly, do nothing
+    RewriteRule ^school_be/ - [L]
+
+    # 3. Stop rewriting if file or directory actually exists physically in root
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # 4. Forward static assets to school_ui/dist directly
+    RewriteRule ^(assets/.*|.*\.(js|css|ico|png|jpg|jpeg|svg|json|woff|woff2|ttf|eot|map|html))$ school_ui/dist/$0 [L]
+
+    # 5. SPA Fallback: Any other URL path (e.g., /dasbord or /dashboard) serves index.html
+    RewriteRule ^(.*)$ school_ui/dist/index.html [L]
+</IfModule>

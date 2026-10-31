@@ -1,0 +1,490 @@
+import axios from '../../lib/axios'
+import { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
+import { FaCalendarAlt, FaEdit, FaClock, FaPrint, FaTrash } from 'react-icons/fa'
+
+
+import { toast } from 'react-toastify'
+import { createPortal } from 'react-dom'
+
+const DEFAULT_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+const DEFAULT_PERIODS = [
+  { id: 1, time: '08:00 - 08:50', label: 'Period 1' },
+  { id: 2, time: '09:00 - 09:50', label: 'Period 2' },
+  { id: 3, time: '10:00 - 10:50', label: 'Period 3' },
+  { id: 4, time: '11:00 - 11:50', label: 'Period 4' },
+  { id: 'break', time: '12:00 - 12:50', label: 'Lunch Break', isBreak: true },
+  { id: 5, time: '13:00 - 13:50', label: 'Period 5' },
+  { id: 6, time: '14:00 - 14:50', label: 'Period 6' },
+]
+
+function generatePeriodsFromMatrix(matrix) {
+  if (!matrix || !matrix.SCHL_NO_OF_CLASS && !matrix.noOfClass) return DEFAULT_PERIODS
+  const numClasses = parseInt(matrix.SCHL_NO_OF_CLASS || matrix.noOfClass || 6, 10)
+  const duration = parseInt(matrix.SCHL_CLASS_DURATION || matrix.duration || 45, 10)
+  const startTimeStr = (matrix.SCHL_CLASS_FRM || matrix.fromTime || '08:00').substring(0, 5)
+
+  const [startH, startM] = startTimeStr.split(':').map(n => parseInt(n, 10) || 0)
+  let currentMinutes = startH * 60 + startM
+
+  const generated = []
+  const breakIndex = Math.floor(numClasses / 2)
+
+  for (let i = 1; i <= numClasses; i++) {
+    if (i === breakIndex + 1) {
+      const bStartH = String(Math.floor(currentMinutes / 60) % 24).padStart(2, '0')
+      const bStartM = String(currentMinutes % 60).padStart(2, '0')
+      currentMinutes += 30 // 30 min break
+      const bEndH = String(Math.floor(currentMinutes / 60) % 24).padStart(2, '0')
+      const bEndM = String(currentMinutes % 60).padStart(2, '0')
+
+      generated.push({
+        id: 'break',
+        time: `${bStartH}:${bStartM} - ${bEndH}:${bEndM}`,
+        label: 'Lunch Break',
+        isBreak: true
+      })
+    }
+
+    const sH = String(Math.floor(currentMinutes / 60) % 24).padStart(2, '0')
+    const sM = String(currentMinutes % 60).padStart(2, '0')
+    currentMinutes += duration
+    const eH = String(Math.floor(currentMinutes / 60) % 24).padStart(2, '0')
+    const eM = String(currentMinutes % 60).padStart(2, '0')
+
+    generated.push({
+      id: i,
+      time: `${sH}:${sM} - ${eH}:${eM}`,
+      label: `Period ${i}`,
+      isBreak: false
+    })
+
+    currentMinutes += 5 // 5 min buffer between classes
+  }
+
+  return generated
+}
+
+export default function ClassSchedule() {
+  const [classes, setClasses] = useState([])
+  const [branches, setBranches] = useState([])
+  const [matrices, setMatrices] = useState([])
+  const [teachers, setTeachers] = useState([])
+  const [rooms, setRooms] = useState([])
+  const [subjects, setSubjects] = useState([])
+  
+  const [selectedBranch, setSelectedBranch] = useState('')
+  const [selectedClass, setSelectedClass] = useState('')
+  const [schedule, setSchedule] = useState([]) // RAW data from backend
+  const [loading, setLoading] = useState(false)
+  const [role, setRole] = useState('')
+
+  useEffect(() => {
+    try {
+      const u = JSON.parse(sessionStorage.getItem('e_school_user') || '{}')
+      setRole((u?.user_role || u?.role || '').toLowerCase())
+    } catch (e) {}
+  }, [])
+
+  const isReadOnlyRole = role.includes('student') || role.includes('guardian') || role.includes('parent')
+  
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingSlot, setEditingSlot] = useState(null)
+  const [errors, setErrors] = useState({})
+  const [formData, setFormData] = useState({ 
+    SCHL_CLS_SCHLDL_ID: '',
+    SCHL_CLS_SCHLDL_SUB_ID: '', 
+    SCHL_BR_TCHR_ID: '', 
+    SCHL_BR_RM_ID: '',
+    SCHL_CLS_SCHDL_FRM_DT: '',
+    SCHL_CLS_SCHDL_TO_DT: ''
+  })
+
+  useEffect(() => {
+    loadLookups()
+  }, [])
+
+  useEffect(() => {
+    if (selectedClass) {
+      loadSchedule(selectedClass)
+    } else {
+      setSchedule([])
+    }
+  }, [selectedClass])
+
+  async function loadLookups() {
+    try {
+      const [clsRes, tchrRes, rmRes, subRes, branchRes, matRes] = await Promise.all([
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/academic/classes`),
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/staff/teachers`),
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/academic/rooms`),
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/academic/subjects`),
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/academic/branches`),
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/academic/matrices`).catch(() => ({ data: [] }))
+      ])
+      
+      const clsList = Array.isArray(clsRes.data) ? clsRes.data : clsRes.data?.data || []
+      setClasses(clsList.map(c => ({
+        ...c,
+        branchId: c.SCHL_BR_CENT_ID || c.schl_br_cent_id || '',
+        matrixId: c.SCHL_BR_MAT || c.schl_br_mat || ''
+      })))
+      
+      const branchList = Array.isArray(branchRes.data) ? branchRes.data : branchRes.data?.data || []
+      setBranches(branchList.map(b => ({
+        id: b.SCHL_BR_ID || b.id,
+        name: b.SCHL_BR_NM || b.name || 'Unknown'
+      })))
+
+      const matList = Array.isArray(matRes.data) ? matRes.data : matRes.data?.data || []
+      setMatrices(matList)
+
+      setTeachers(Array.isArray(tchrRes.data) ? tchrRes.data : tchrRes.data?.data || [])
+      setRooms(Array.isArray(rmRes.data) ? rmRes.data : rmRes.data?.data || [])
+      setSubjects(Array.isArray(subRes.data) ? subRes.data : subRes.data?.data || [])
+
+      if (clsList.length > 0) {
+        setSelectedClass(clsList[0].SCHL_BR_CLS_ID || clsList[0].schl_br_cls_id || clsList[0].id || '')
+      }
+    } catch (err) {
+      toast.error('Failed to load lookup data')
+    }
+  }
+
+  // Derive dynamic matrix, periods, and active week days based on selectedClass
+  const currentClassObj = classes.find(c => String(c.SCHL_BR_CLS_ID || c.schl_br_cls_id || c.id) === String(selectedClass))
+  const currentMatrix = matrices.find(m => String(m.SCHL_MAT_ID || m.schl_mat_id) === String(currentClassObj?.matrixId))
+  
+  const activePeriods = currentMatrix ? generatePeriodsFromMatrix(currentMatrix) : DEFAULT_PERIODS
+  const activeDays = currentMatrix?.SCHL_WEEKOFDAY 
+    ? currentMatrix.SCHL_WEEKOFDAY.split(',').map(d => d.trim()).filter(Boolean)
+    : DEFAULT_DAYS
+
+  async function loadSchedule(classId) {
+    try {
+      setLoading(true)
+      const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/academic/timetable/${classId}`)
+      let data = Array.isArray(res.data) ? res.data : res.data?.data || []
+      setSchedule(data)
+    } catch (err) {
+      toast.error('Failed to load schedule')
+      setSchedule([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function getSlotData(day, periodId) {
+    const period = activePeriods.find(p => p.id === periodId)
+    if (!period) return null
+    const startTime = period.time.split(' - ')[0]
+    
+    return schedule.find(s => 
+      (s.SCHL_DAY_OF_WK === day || s.schl_day_of_wk === day) &&
+      (s.SCHL_CLS_SCHDL_FRM_DT === startTime || s.schl_cls_schdl_frm_dt === startTime)
+    )
+  }
+
+  function openEditModal(day, periodId) {
+    const period = activePeriods.find(p => p.id === periodId)
+    const startTime = period.time.split(' - ')[0]
+    const endTime = period.time.split(' - ')[1]
+    
+    const existing = getSlotData(day, periodId)
+    
+    setErrors({})
+    setEditingSlot({ day, periodId, isNew: !existing })
+    
+    setFormData({
+      SCHL_CLS_SCHLDL_ID: existing?.SCHL_CLS_SCHLDL_ID || existing?.schl_cls_schldl_id || '',
+      SCHL_CLS_SCHLDL_SUB_ID: existing?.SCHL_CLS_SCHLDL_SUB_ID || existing?.schl_cls_schldl_sub_id || '',
+      SCHL_BR_TCHR_ID: existing?.SCHL_BR_TCHR_ID || existing?.schl_br_tchr_id || '',
+      SCHL_BR_RM_ID: existing?.SCHL_BR_RM_ID || existing?.schl_br_rm_id || '',
+      SCHL_CLS_SCHDL_FRM_DT: startTime,
+      SCHL_CLS_SCHDL_TO_DT: endTime,
+      SCHL_DAY_OF_WK: day,
+      SCHL_CLS_SCHLDL_SEC_SESS_ID: selectedClass
+    })
+    setIsModalOpen(true)
+  }
+
+  async function handleSaveSlot(e) {
+    e.preventDefault()
+    const errs = {}
+    if (!formData.SCHL_CLS_SCHLDL_SUB_ID) errs.SCHL_CLS_SCHLDL_SUB_ID = 'Please select a subject.'
+    if (!formData.SCHL_BR_TCHR_ID) errs.SCHL_BR_TCHR_ID = 'Please select a teacher.'
+    if (!formData.SCHL_BR_RM_ID) errs.SCHL_BR_RM_ID = 'Please select a room.'
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs)
+      return
+    }
+    try {
+      if (editingSlot.isNew) {
+        await axios.post(`${import.meta.env.VITE_API_BASE_URL}/academic/timetable/entry`, formData)
+        toast.success('Schedule entry created')
+      } else {
+        await axios.put(`${import.meta.env.VITE_API_BASE_URL}/academic/timetable/entry/${formData.SCHL_CLS_SCHLDL_ID}`, formData)
+        toast.success('Schedule entry updated')
+      }
+      setIsModalOpen(false)
+      loadSchedule(selectedClass)
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to update schedule')
+    }
+  }
+
+  async function handleDeleteSlot() {
+    if (!window.confirm('Are you sure you want to remove this slot?')) return
+    try {
+      await axios.delete(`${import.meta.env.VITE_API_BASE_URL}/academic/timetable/entry/${formData.SCHL_CLS_SCHLDL_ID}`)
+      toast.success('Schedule entry deleted')
+      setIsModalOpen(false)
+      loadSchedule(selectedClass)
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to delete schedule entry')
+    }
+  }
+
+  const getTeacherName = (id) => {
+    const t = teachers.find(t => String(t.BR_TCHR_ID || t.br_tchr_id || t.TCHR_ID || t.tchr_id || t.id) === String(id))
+    return t ? (t.BR_TCHR_NM || t.br_tchr_nm || t.TCHR_NM || t.tchr_nm || t.name) : ''
+  }
+
+  const getSubjectName = (id) => {
+    const s = subjects.find(s => String(s.BR_CLS_SUB_ID || s.br_cls_sub_id || s.SUB_ID || s.sub_id || s.id) === String(id))
+    return s ? (s.BR_CLS_SUB_NAME || s.br_cls_sub_name || s.SUB_NM || s.sub_nm || s.name) : ''
+  }
+  
+  const getRoomName = (id) => {
+    const r = rooms.find(r => String(r.SCHL_BR_RM_ID || r.schl_br_rm_id || r.id) === String(id))
+    return r ? (r.SCHL_BR_ROOM_DESC || r.schl_br_room_desc || r.name) : ''
+  }
+
+  return (
+    <motion.div className="animate-fade-in" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Class Schedule</h1>
+          <p className="page-subtitle">View and manage timetables</p>
+        </div>
+        <div className="flex gap-md items-center flex-wrap no-print">
+          {isReadOnlyRole ? (
+            <div style={{ display: 'flex', gap: '16px', fontSize: '0.9rem' }}>
+              <span style={{ padding: '6px 14px', background: 'rgba(59, 130, 246, 0.15)', color: '#3b82f6', borderRadius: '20px', fontWeight: 600 }}>
+                📍 Branch: Enrolled Campus (Locked)
+              </span>
+              <span style={{ padding: '6px 14px', background: 'rgba(139, 92, 246, 0.15)', color: '#8b5cf6', borderRadius: '20px', fontWeight: 600 }}>
+                🎓 Class: {classes.find(c => String(c.SCHL_BR_CLS_ID || c.schl_br_cls_id || c.id) === String(selectedClass))?.SCHL_BR_CLASS_NM || 'Assigned Class'} (Locked)
+              </span>
+            </div>
+          ) : (
+            <>
+              <label className="font-bold text-muted">Branch:</label>
+              <select 
+                className="form-control" 
+                style={{ minWidth: '150px' }}
+                value={selectedBranch} 
+                onChange={(e) => { setSelectedBranch(e.target.value); setSelectedClass(''); }}
+              >
+                <option value="">-- All Branches --</option>
+                {branches.map(b => (
+                  <option key={b.id} value={b.id}>{b.name}</option>
+                ))}
+              </select>
+              
+              <label className="font-bold text-muted ml-md">Class:</label>
+              <select 
+                className="form-control" 
+                style={{ minWidth: '150px' }}
+                value={selectedClass} 
+                onChange={(e) => setSelectedClass(e.target.value)}
+              >
+                <option value="">-- Choose Class --</option>
+                {classes.filter(c => selectedBranch ? String(c.branchId) === String(selectedBranch) : true).map(c => {
+                  const cId = c.SCHL_BR_CLS_ID || c.schl_br_cls_id || c.id
+                  const cName = c.SCHL_BR_CLASS_NM || c.schl_br_class_nm || c.name
+                  return <option key={cId} value={cId}>{cName}</option>
+                })}
+              </select>
+              {currentMatrix && (
+                <span className="badge" style={{ background: 'rgba(139, 92, 246, 0.15)', color: '#8b5cf6', padding: '6px 12px', fontSize: '0.85rem' }}>
+                  ⚡ Matrix: {currentMatrix.SCHL_UNIQ_MATRIX_NM || currentMatrix.uniqueName} ({currentMatrix.SCHL_NO_OF_CLASS || currentMatrix.noOfClass || 6} periods @ {currentMatrix.SCHL_CLASS_DURATION || currentMatrix.duration || 45}m)
+                </span>
+              )}
+            </>
+          )}
+
+          <button type="button" className="btn-secondary" onClick={() => window.print()}>
+            <FaPrint /> Print
+          </button>
+        </div>
+      </div>
+
+      {/* Print-only header with timetable metadata */}
+      <div className="print-only print-report-title">Weekly Class Schedule</div>
+      <div className="print-only print-report-subtitle">
+        {classes.find(c => String(c.SCHL_BR_CLS_ID || c.schl_br_cls_id || c.id) === String(selectedClass))?.SCHL_BR_CLASS_NM || 'Class Schedule'}
+      </div>
+      <div className="print-only print-meta">
+        <span><strong>Generated:</strong> {new Date().toLocaleString()}</span>
+        <span><strong>Branch:</strong> {selectedBranch ? (branches.find(b => String(b.id) === String(selectedBranch))?.name || selectedBranch) : 'All Branches'}</span>
+      </div>
+
+      <div className="glass-panel page-card">
+        {loading ? (
+          <div className="text-center p-xl">Loading schedule...</div>
+        ) : !selectedClass ? (
+          <div className="text-center p-xl text-muted">Please select a class to view its schedule.</div>
+        ) : (
+          <div className="table-container" style={{ overflowX: 'auto' }}>
+            <table className="data-table timetable" style={{ minWidth: '800px' }}>
+              <thead>
+                <tr>
+                  <th style={{ width: '130px' }}><FaClock className="inline-block mr-2" /> Time</th>
+                  {activeDays.map(day => (
+                    <th key={day} className="text-center">{day}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {activePeriods.map(period => (
+                  <tr key={period.id} className={period.isBreak ? 'bg-muted/10' : ''}>
+                    <td className="font-bold whitespace-nowrap">
+                      <div>{period.label}</div>
+                      <div className="text-small text-muted">{period.time}</div>
+                    </td>
+                    {activeDays.map(day => {
+                      if (period.isBreak) {
+                        return (
+                          <td key={day} className="text-center text-muted font-bold tracking-widest bg-muted/5">
+                            LUNCH BREAK
+                          </td>
+                        )
+                      }
+                      
+                      const slot = getSlotData(day, period.id)
+                      const subName = slot ? getSubjectName(slot.SCHL_CLS_SCHLDL_SUB_ID || slot.schl_cls_schldl_sub_id) : ''
+                      const tchrName = slot ? getTeacherName(slot.SCHL_BR_TCHR_ID || slot.schl_br_tchr_id) : ''
+                      const rmName = slot ? getRoomName(slot.SCHL_BR_RM_ID || slot.schl_br_rm_id) : ''
+                      
+                      return (
+                        <td key={day} className={`relative group p-2 ${!isReadOnlyRole ? 'hover:bg-white/5 transition-colors cursor-pointer' : ''}`} onClick={() => !isReadOnlyRole && openEditModal(day, period.id)}>
+                          <div className={`h-full w-full rounded p-2 flex flex-col justify-center items-center min-h-[80px] border border-transparent ${!isReadOnlyRole ? 'group-hover:border-primary/30' : ''}`}>
+                            {slot ? (
+                              <>
+                                <div className="font-bold text-primary">{subName || 'Subject'}</div>
+                                {tchrName && <div className="text-small">{tchrName}</div>}
+                                {rmName && <div className="text-small text-muted">{rmName}</div>}
+                              </>
+                            ) : (
+                              <div className="text-muted text-small opacity-50">{isReadOnlyRole ? 'No Class' : '+ Assign'}</div>
+                            )}
+                          </div>
+                        </td>
+                      )
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {isModalOpen && createPortal(
+        <div className="modal-overlay">
+          <motion.div
+            className="glass-panel modal-container"
+            style={{ maxWidth: '400px' }}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+          >
+            <div className="modal-header">
+              <h2 className="modal-title">
+                {editingSlot.isNew ? 'Assign Slot' : 'Edit Slot'} ({editingSlot?.day})
+              </h2>
+              <button className="btn-icon" onClick={() => setIsModalOpen(false)}>×</button>
+            </div>
+            <form onSubmit={handleSaveSlot}>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label className="form-label">Subject <span className="form-required">*</span></label>
+                  <select
+                    className={`form-control${errors.SCHL_CLS_SCHLDL_SUB_ID ? ' form-input-error' : ''}`}
+                    value={formData.SCHL_CLS_SCHLDL_SUB_ID}
+                    onChange={e => {
+                      const subId = e.target.value
+                      const matchingTeacher = teachers.find(t => String(t.subject_id || t.SCHL_SUB_ID || t.TCHR_SUB_ID || '') === String(subId))
+                      setFormData(prev => ({
+                        ...prev,
+                        SCHL_CLS_SCHLDL_SUB_ID: subId,
+                        ...(matchingTeacher && (!prev.SCHL_BR_TCHR_ID || prev.SCHL_BR_TCHR_ID === '') ? { SCHL_BR_TCHR_ID: matchingTeacher.BR_TCHR_ID || matchingTeacher.TCHR_ID || matchingTeacher.id } : {})
+                      }))
+                    }}
+                    required
+                  >
+                    <option value="">-- Select Subject --</option>
+                    {(() => {
+                      const classSubjects = subjects.filter(s => {
+                        if (!selectedClass) return true
+                        const clsId = s.BR_CLS_ID || s.br_cls_id || s.SCHL_BR_CLS_ID || s.schl_br_cls_id || s.class_id
+                        return !clsId || String(clsId) === String(selectedClass)
+                      })
+                      const list = classSubjects.length > 0 ? classSubjects : subjects
+                      return list.map(s => {
+                        const sId = s.BR_CLS_SUB_ID || s.br_cls_sub_id || s.SUB_ID || s.sub_id || s.id
+                        const sName = s.BR_CLS_SUB_NAME || s.br_cls_sub_name || s.SUB_NM || s.sub_nm || s.name
+                        const cName = s.class_name || s.SCHL_BR_CLASS_NM || ''
+                        return <option key={sId} value={sId}>{sName}{!selectedClass && cName ? ` (${cName})` : ''}</option>
+                      })
+                    })()}
+                  </select>
+                  {errors.SCHL_CLS_SCHLDL_SUB_ID && <span className="form-error-msg">{errors.SCHL_CLS_SCHLDL_SUB_ID}</span>}
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Teacher <span className="form-required">*</span></label>
+                  <select className={`form-control${errors.SCHL_BR_TCHR_ID ? ' form-input-error' : ''}`} value={formData.SCHL_BR_TCHR_ID} onChange={e => setFormData({...formData, SCHL_BR_TCHR_ID: e.target.value})} required>
+                    <option value="">-- Select Teacher --</option>
+                    {teachers.map(t => {
+                      const tId = t.BR_TCHR_ID || t.br_tchr_id || t.TCHR_ID || t.tchr_id || t.id
+                      const tName = t.BR_TCHR_NM || t.br_tchr_nm || t.TCHR_NM || t.tchr_nm || t.name
+                      const cls = t.class_names || t.classNames || ''
+                      return <option key={tId} value={tId}>{tName}{cls ? ` (${cls})` : ''}</option>
+                    })}
+                  </select>
+                  {errors.SCHL_BR_TCHR_ID && <span className="form-error-msg">{errors.SCHL_BR_TCHR_ID}</span>}
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Room <span className="form-required">*</span></label>
+                  <select className={`form-control${errors.SCHL_BR_RM_ID ? ' form-input-error' : ''}`} value={formData.SCHL_BR_RM_ID} onChange={e => setFormData({...formData, SCHL_BR_RM_ID: e.target.value})} required>
+                    <option value="">-- Select Room --</option>
+                    {rooms.map(r => {
+                      const rId = r.SCHL_BR_RM_ID || r.schl_br_rm_id || r.id;
+                      const rName = r.SCHL_BR_ROOM_DESC || r.schl_br_room_desc || r.name;
+                      return <option key={rId} value={rId}>{rName}</option>
+                    })}
+                  </select>
+                  {errors.SCHL_BR_RM_ID && <span className="form-error-msg">{errors.SCHL_BR_RM_ID}</span>}
+                </div>
+              </div>
+              <div className="modal-footer" style={{ justifyContent: 'space-between' }}>
+                <div>
+                  {!editingSlot.isNew && (
+                    <button type="button" className="btn-secondary text-danger" onClick={handleDeleteSlot} style={{ color: 'var(--clr-danger)' }}>
+                      <FaTrash style={{ marginRight: '6px' }}/> Remove Slot
+                    </button>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button type="button" className="btn-secondary" onClick={() => setIsModalOpen(false)}>Cancel</button>
+                  <button type="submit" className="btn-primary">Save Slot</button>
+                </div>
+              </div>
+            </form>
+          </motion.div>
+        </div>,
+        document.body
+      )}
+    </motion.div>
+  )
+}
