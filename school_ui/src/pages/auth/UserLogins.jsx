@@ -30,6 +30,7 @@ export default function UserLogins() {
     user_first_name: '',
     user_last_name: '',
     user_email_id: '',
+    user_mobile: '',
     user_passwd: '',
     user_role: '',
     user_school_id: currentUser?.school_id || currentUser?.SCHL_ID || '',
@@ -111,6 +112,7 @@ export default function UserLogins() {
         user_first_name: user.user_first_name || user.USER_FIRST_NAME || '',
         user_last_name: user.user_last_name || user.USER_LAST_NAME || '',
         user_email_id: user.user_email_id || '',
+        user_mobile: user.user_mobile || user.USER_MOBILE || '',
         user_passwd: '', // Leave blank when editing unless changing
         user_role: (user.user_role || user.role_id) || '',
         user_school_id: user.user_school_id || user.USER_SCHOOL_ID || '',
@@ -124,6 +126,7 @@ export default function UserLogins() {
         user_first_name: '',
         user_last_name: '',
         user_email_id: '',
+        user_mobile: '',
         user_passwd: '',
         user_role: '',
         user_school_id: isSchoolAdmin ? (currentUser?.school_id || currentUser?.userId) : '',
@@ -151,8 +154,12 @@ export default function UserLogins() {
     const emailTrimmed = formData.user_email_id.trim()
     if (!emailTrimmed) {
       errs.user_email_id = 'Email address is required.'
-    } else if (!/^[a-zA-Z._-]+@[a-zA-Z.-]+\.[a-zA-Z]{2,}$/.test(emailTrimmed)) {
+    } else if (!/^[a-zA-Z._-]+@[a-zA-Z.-]+\.[a-zA-Z]{2,}$/.test(emailTrimmed) || (emailTrimmed.match(/@/g) || []).length > 1 || emailTrimmed.endsWith('.')) {
       errs.user_email_id = 'Please enter a valid email address (e.g. name@school.edu). Numbers and symbols like $, % are not allowed.'
+    }
+
+    if (formData.user_mobile && !/^\+?[0-9]{10,15}$/.test(formData.user_mobile)) {
+      errs.user_mobile = 'Mobile number must be between 10 to 15 digits.'
     }
     
     if (!editingUser) {
@@ -520,6 +527,21 @@ export default function UserLogins() {
                     required
                   />
                   {errors.user_email_id && <span className="form-error-msg">{errors.user_email_id}</span>}
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Mobile Number</label>
+                  <input
+                    type="text"
+                    className={`form-control${errors.user_mobile ? ' form-input-error' : ''}`}
+                    placeholder="e.g. +1234567890"
+                    value={formData.user_mobile}
+                    onChange={(e) => {
+                      const cleaned = e.target.value.replace(/[^\d+]/g, '')
+                      setFormData({ ...formData, user_mobile: cleaned })
+                    }}
+                  />
+                  {errors.user_mobile && <span className="form-error-msg">{errors.user_mobile}</span>}
                 </div>
 
                 <div className="form-group">
