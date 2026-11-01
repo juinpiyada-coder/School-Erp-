@@ -62,6 +62,10 @@ class RoleService {
     }
 
     public function deleteRole($id) {
+        if (strtoupper(trim($id)) === 'R_SUPERADMIN') {
+            return ['success' => false, 'message' => 'The Super Admin role is protected and cannot be deleted.'];
+        }
+
         if (!$this->roleModel->getById($id)) {
             return ['success' => false, 'message' => 'Role not found'];
         }

@@ -200,6 +200,10 @@ class User {
         $updates = [];
         $params = [];
         
+        if (array_key_exists('user_id', $data) && !empty($data['user_id'])) {
+            $updates[] = "user_id = ?";
+            $params[] = $data['user_id'];
+        }
         if (array_key_exists('user_email_id', $data)) {
             $updates[] = "user_email_id = ?";
             $params[] = $data['user_email_id'];

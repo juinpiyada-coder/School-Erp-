@@ -84,7 +84,7 @@ export default function Branches() {
   function openModal(branch = null) {
     setShowPassword(false)
     setErrors({})
-    const defaultSchoolCenterId = user.school_id || user.SCHL_ID || user.user_school_id || user.user_id || user.id || (schools.length > 0 ? (schools[0].schl_mn_id || schools[0].SCHL_MN_ID) : '')
+    const defaultSchoolCenterId = user.school_id || user.SCHL_ID || user.user_school_id || (schools.length > 0 ? (schools[0].schl_mn_id || schools[0].SCHL_MN_ID) : '') || user.user_id || user.id || ''
     if (branch) {
       setEditingBranch(branch)
       setFormData({
@@ -106,7 +106,7 @@ export default function Branches() {
       setEditingBranch(null)
       setFormData({
         SCHL_BR_ID: '',
-        SCHL_BR_CENTER_ID: isSchoolAdmin ? defaultSchoolCenterId : (schools[0]?.schl_mn_id || schools[0]?.SCHL_MN_ID || ''),
+        SCHL_BR_CENTER_ID: isSchoolAdmin ? defaultSchoolCenterId : (schools[0]?.schl_mn_id || schools[0]?.SCHL_MN_ID || defaultSchoolCenterId),
         SCHL_BR_NM: '',
         SCHL_BR_ADDRESS: '',
         SCHL_BR_CITY: '',

@@ -344,6 +344,12 @@ class UserService {
             }
         }
 
+        if (!empty($data['user_id']) && $data['user_id'] !== $id) {
+            if ($this->userModel->getById($data['user_id'])) {
+                return ['success' => false, 'message' => 'User with this ID already exists', 'errors' => ['user_id' => 'User ID is already in use']];
+            }
+        }
+
         if (isset($data['user_email_id']) && !filter_var($data['user_email_id'], FILTER_VALIDATE_EMAIL)) {
             return ['success' => false, 'message' => 'Validation failed', 'errors' => ['user_email_id' => 'Invalid email format']];
         }

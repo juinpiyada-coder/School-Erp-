@@ -464,7 +464,6 @@ export default function UserLogins() {
                     placeholder="e.g. john_doe"
                     value={formData.user_id}
                     onChange={(e) => setFormData({ ...formData, user_id: e.target.value.replace(/[^a-zA-Z0-9_.]/g, '') })}
-                    disabled={!!editingUser}
                     required
                   />
                   {errors.user_id && <span className="form-error-msg">{errors.user_id}</span>}

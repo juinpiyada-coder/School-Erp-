@@ -184,15 +184,25 @@ export default function Roles() {
                   const id = r.MAS_role_id || r.MAS_ROLE_ID || r.mas_role_id
                   const desc = r.MAS_role_DESC || r.MAS_ROLE_DESC || r.mas_role_desc
                   const link = r.MAS_role_LINK || r.MAS_role_link || r.MAS_ROLE_LINK || r.mas_role_link
+                  const isSuperAdminRole = (id || '').toUpperCase() === 'R_SUPERADMIN'
                   return (
                     <tr key={id || idx}>
-                      <td><span className="badge badge-info">{id}</span></td>
+                      <td>
+                        <span className={`badge ${isSuperAdminRole ? 'badge-primary' : 'badge-info'}`}>{id}</span>
+                        {isSuperAdminRole && (
+                          <span style={{ marginLeft: '6px', fontSize: '0.72rem', color: 'var(--clr-accent)', fontWeight: 600 }}>
+                            (System)
+                          </span>
+                        )}
+                      </td>
                       <td>{desc}</td>
                       <td>{link || '-'}</td>
                       <td>
                         <div className="flex gap-sm">
                           <button className="btn-icon" onClick={() => openModal(r)} title="Edit"><FaEdit /></button>
-                          <button className="btn-icon text-danger" onClick={() => handleDelete(id)} title="Delete"><FaTrash /></button>
+                          {!isSuperAdminRole && (
+                            <button className="btn-icon text-danger" onClick={() => handleDelete(id)} title="Delete"><FaTrash /></button>
+                          )}
                         </div>
                       </td>
                     </tr>
