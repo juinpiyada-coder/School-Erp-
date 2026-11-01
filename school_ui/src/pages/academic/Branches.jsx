@@ -1,5 +1,5 @@
 import axios from '../../lib/axios'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { FaPlus, FaTrash, FaEdit, FaCodeBranch, FaEye, FaEyeSlash, FaSearch } from 'react-icons/fa'
 import { createPortal } from 'react-dom'
@@ -7,6 +7,23 @@ import { toast } from 'react-toastify'
 import { INDIAN_STATES, CITIES_BY_STATE, ALL_INDIAN_CITIES, COUNTRIES, MEDIUMS, BOARDS } from '../../lib/indiaData'
 import useDebouncedValue from '../../hooks/useDebouncedValue'
 import usePagination from '../../hooks/usePagination'
+
+const INITIAL_FORM = {
+  SCHL_BR_ID: '', SCHL_BR_CENTER_ID: '', SCHL_BR_NM: '', SCHL_BR_ADDRESS: '',
+  SCHL_BR_CITY: '', SCHL_BR_STATE: '', SCHL_BR_PIN: '', SCHL_BR_COUNTRY: 'India',
+  SCHL_BR_MEDIUM: '', SCHL_BR_BOARD: '', SCHL_BR_EMAILID: '', SCHL_BR_CONTACTNO: '', SCHL_BR_PASSWORD: ''
+}
+
+// Reusable Form Field helper to eliminate repetitive markup
+function FormField({ label, required = true, error, fullWidth = false, children }) {
+  return (
+    <div className="form-group" style={fullWidth ? { gridColumn: '1 / -1' } : undefined}>
+      <label className="form-label">{label} {required && <span className="form-required">*</span>}</label>
+      {children}
+      {error && <span className="form-error-msg">{error}</span>}
+    </div>
+  )
+}
 
 export default function Branches() {
   const [branches, setBranches] = useState([])
@@ -17,28 +34,15 @@ export default function Branches() {
   const [showPassword, setShowPassword] = useState(false)
   const [errors, setErrors] = useState({})
   const [search, setSearch] = useState('')
+  const [formData, setFormData] = useState(INITIAL_FORM)
 
-  const user = JSON.parse(sessionStorage.getItem('e_school_user') || '{}')
+  const user = useMemo(() => JSON.parse(sessionStorage.getItem('e_school_user') || '{}'), [])
   const userRole = (user?.user_role || user?.role_id || user?.role || '').toLowerCase()
   const isSuperAdmin = userRole.includes('super')
   const isSchoolAdmin = userRole.includes('school') && !isSuperAdmin
   const isBranchAdmin = userRole.includes('branch') && !isSuperAdmin
 
-  const [formData, setFormData] = useState({
-    SCHL_BR_ID: '',
-    SCHL_BR_CENTER_ID: '',
-    SCHL_BR_NM: '',
-    SCHL_BR_ADDRESS: '',
-    SCHL_BR_CITY: '',
-    SCHL_BR_STATE: '',
-    SCHL_BR_PIN: '',
-    SCHL_BR_COUNTRY: 'India',
-    SCHL_BR_MEDIUM: '',
-    SCHL_BR_BOARD: '',
-    SCHL_BR_EMAILID: '',
-    SCHL_BR_CONTACTNO: '',
-    SCHL_BR_PASSWORD: ''
-  })
+  const defaultSchoolId = user.school_id || user.SCHL_ID || user.user_school_id || user.user_id || user.id || ''
 
   useEffect(() => {
     loadBranches()
@@ -49,18 +53,10 @@ export default function Branches() {
     try {
       const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/auth/school`)
       let list = Array.isArray(res.data) ? res.data : res.data?.data || []
-      
-      const currentSchoolId = String(user.school_id || user.SCHL_ID || user.user_school_id || user.user_id || user.id || '')
-      if (isSchoolAdmin && currentSchoolId) {
-          const matched = list.filter(s => {
-            const sid = String(s.schl_mn_id || s.SCHL_MN_ID || '')
-            return sid === currentSchoolId
-          })
-          if (matched.length > 0) {
-            list = matched
-          }
+      if (isSchoolAdmin && defaultSchoolId) {
+        const matched = list.filter(s => String(s.schl_mn_id || s.SCHL_MN_ID || '') === String(defaultSchoolId))
+        if (matched.length > 0) list = matched
       }
-      
       setSchools(list)
     } catch (err) {
       console.error('Failed to load schools', err)
@@ -71,8 +67,7 @@ export default function Branches() {
     try {
       setLoading(true)
       const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/academic/branches?limit=1000`)
-      const list = Array.isArray(res.data) ? res.data : res.data?.data || []
-      setBranches(list)
+      setBranches(Array.isArray(res.data) ? res.data : res.data?.data || [])
     } catch (err) {
       toast.error('Failed to load branches')
       console.error(err)
@@ -84,12 +79,12 @@ export default function Branches() {
   function openModal(branch = null) {
     setShowPassword(false)
     setErrors({})
-    const defaultSchoolCenterId = user.school_id || user.SCHL_ID || user.user_school_id || (schools.length > 0 ? (schools[0].schl_mn_id || schools[0].SCHL_MN_ID) : '') || user.user_id || user.id || ''
+    const schoolFallback = defaultSchoolId || (schools[0]?.schl_mn_id || schools[0]?.SCHL_MN_ID) || ''
     if (branch) {
       setEditingBranch(branch)
       setFormData({
         SCHL_BR_ID: branch.SCHL_BR_ID || branch.schl_br_id || '',
-        SCHL_BR_CENTER_ID: branch.SCHL_BR_CENTER_ID || branch.schl_br_center_id || defaultSchoolCenterId,
+        SCHL_BR_CENTER_ID: branch.SCHL_BR_CENTER_ID || branch.schl_br_center_id || schoolFallback,
         SCHL_BR_NM: branch.SCHL_BR_NM || branch.schl_br_nm || '',
         SCHL_BR_ADDRESS: branch.SCHL_BR_ADDRESS || branch.schl_br_address || '',
         SCHL_BR_CITY: branch.SCHL_BR_CITY || branch.schl_br_city || '',
@@ -104,21 +99,7 @@ export default function Branches() {
       })
     } else {
       setEditingBranch(null)
-      setFormData({
-        SCHL_BR_ID: '',
-        SCHL_BR_CENTER_ID: isSchoolAdmin ? defaultSchoolCenterId : (schools[0]?.schl_mn_id || schools[0]?.SCHL_MN_ID || defaultSchoolCenterId),
-        SCHL_BR_NM: '',
-        SCHL_BR_ADDRESS: '',
-        SCHL_BR_CITY: '',
-        SCHL_BR_STATE: '',
-        SCHL_BR_PIN: '',
-        SCHL_BR_COUNTRY: 'India',
-        SCHL_BR_MEDIUM: '',
-        SCHL_BR_BOARD: '',
-        SCHL_BR_EMAILID: '',
-        SCHL_BR_CONTACTNO: '',
-        SCHL_BR_PASSWORD: ''
-      })
+      setFormData({ ...INITIAL_FORM, SCHL_BR_CENTER_ID: schoolFallback })
     }
     setIsModalOpen(true)
   }
@@ -137,17 +118,20 @@ export default function Branches() {
     if (!/^\S+@\S+\.\S+$/.test(formData.SCHL_BR_EMAILID)) errs.SCHL_BR_EMAILID = 'Please enter a valid email address'
     if (!/^[6-9]\d{9}$/.test(formData.SCHL_BR_CONTACTNO)) errs.SCHL_BR_CONTACTNO = 'Enter a valid 10-digit Indian number (starts with 6-9)'
     if (!editingBranch && formData.SCHL_BR_PASSWORD.length < 6) errs.SCHL_BR_PASSWORD = 'Password must be at least 6 characters long'
+
     if (Object.keys(errs).length > 0) {
       setErrors(errs)
       return
     }
+
     try {
+      const url = `${import.meta.env.VITE_API_BASE_URL}/academic/branches`
       if (editingBranch) {
         const id = editingBranch.SCHL_BR_ID || editingBranch.schl_br_id
-        await axios.put(`${import.meta.env.VITE_API_BASE_URL}/academic/branches/${id}`, formData)
+        await axios.put(`${url}/${id}`, formData)
         toast.success('Branch updated successfully')
       } else {
-        await axios.post(`${import.meta.env.VITE_API_BASE_URL}/academic/branches`, formData)
+        await axios.post(url, formData)
         toast.success('Branch created successfully')
       }
       setIsModalOpen(false)
@@ -169,16 +153,19 @@ export default function Branches() {
   }
 
   const debouncedSearch = useDebouncedValue(search, 300)
-  const filtered = branches.filter((b) => {
-    const name = b.SCHL_BR_NM || b.schl_br_nm || ''
-    const city = b.SCHL_BR_CITY || b.schl_br_city || ''
-    const state = b.SCHL_BR_STATE || b.schl_br_state || ''
-    const email = b.SCHL_BR_EMAILID || b.schl_br_emailid || ''
-    const id = b.SCHL_BR_ID || b.schl_br_id || ''
-    return `${id} ${name} ${city} ${state} ${email}`.toLowerCase().includes(debouncedSearch.toLowerCase())
-  })
+  const filtered = useMemo(() => branches.filter((b) => {
+    const text = `${b.SCHL_BR_ID || b.schl_br_id || ''} ${b.SCHL_BR_NM || b.schl_br_nm || ''} ${b.SCHL_BR_CITY || b.schl_br_city || ''} ${b.SCHL_BR_STATE || b.schl_br_state || ''} ${b.SCHL_BR_EMAILID || b.schl_br_emailid || ''}`.toLowerCase()
+    return text.includes(debouncedSearch.toLowerCase())
+  }), [branches, debouncedSearch])
 
   const pagination = usePagination(filtered, 10)
+
+  // Derived city list based on selected state
+  const cityOptions = useMemo(() => {
+    let list = formData.SCHL_BR_STATE && CITIES_BY_STATE[formData.SCHL_BR_STATE] ? [...CITIES_BY_STATE[formData.SCHL_BR_STATE]] : (ALL_INDIAN_CITIES || [])
+    if (formData.SCHL_BR_CITY && !list.includes(formData.SCHL_BR_CITY)) list = [formData.SCHL_BR_CITY, ...list]
+    return list
+  }, [formData.SCHL_BR_STATE, formData.SCHL_BR_CITY])
 
   return (
     <motion.div className="animate-fade-in" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
@@ -187,9 +174,7 @@ export default function Branches() {
           <h1 className="page-title">Branches</h1>
           <p className="page-subtitle">Manage school campuses and branches</p>
         </div>
-        <button className="btn-primary" onClick={() => openModal()}>
-          <FaPlus /> Add Branch
-        </button>
+        <button className="btn-primary" onClick={() => openModal()}><FaPlus /> Add Branch</button>
       </div>
 
       <div className="glass-panel page-card">
@@ -221,24 +206,12 @@ export default function Branches() {
             </thead>
             <tbody>
               {loading ? (
-                <tr>
-                  <td colSpan="6" className="text-center">Loading...</td>
-                </tr>
+                <tr><td colSpan="6" className="text-center">Loading...</td></tr>
               ) : pagination.pageItems.length === 0 ? (
-                <tr>
-                  <td colSpan="6" className="text-center text-muted">{search ? 'No branches match your search.' : 'No branches found.'}</td>
-                </tr>
+                <tr><td colSpan="6" className="text-center text-muted">{search ? 'No branches match your search.' : 'No branches found.'}</td></tr>
               ) : (
                 pagination.pageItems.map((b) => {
                   const id = b.SCHL_BR_ID || b.schl_br_id
-                  const name = b.SCHL_BR_NM || b.schl_br_nm
-                  const city = b.SCHL_BR_CITY || b.schl_br_city
-                  const state = b.SCHL_BR_STATE || b.schl_br_state
-                  const email = b.SCHL_BR_EMAILID || b.schl_br_emailid
-                  const phone = b.SCHL_BR_CONTACTNO || b.schl_br_contactno
-                  const medium = b.SCHL_BR_MEDIUM || b.schl_br_medium
-                  const board = b.SCHL_BR_BOARD || b.schl_br_board
-
                   return (
                     <tr key={id}>
                       <td>
@@ -247,15 +220,15 @@ export default function Branches() {
                           <span className="badge badge-info">{id}</span>
                         </div>
                       </td>
-                      <td className="font-bold">{name}</td>
-                      <td>{city}, {state}</td>
+                      <td className="font-bold">{b.SCHL_BR_NM || b.schl_br_nm}</td>
+                      <td>{b.SCHL_BR_CITY || b.schl_br_city}, {b.SCHL_BR_STATE || b.schl_br_state}</td>
                       <td>
-                        <div className="text-small">{medium || '—'}</div>
-                        <div className="text-small text-muted">{board || '—'}</div>
+                        <div className="text-small">{b.SCHL_BR_MEDIUM || b.schl_br_medium || '—'}</div>
+                        <div className="text-small text-muted">{b.SCHL_BR_BOARD || b.schl_br_board || '—'}</div>
                       </td>
                       <td>
-                        <div className="text-small">{email}</div>
-                        <div className="text-small text-muted">{phone}</div>
+                        <div className="text-small">{b.SCHL_BR_EMAILID || b.schl_br_emailid}</div>
+                        <div className="text-small text-muted">{b.SCHL_BR_CONTACTNO || b.schl_br_contactno}</div>
                       </td>
                       <td>
                         <div className="flex gap-sm">
@@ -272,7 +245,6 @@ export default function Branches() {
         </div>
       </div>
 
-      {/* Pagination Footer */}
       {filtered.length > 0 && (
         <div className="table-toolbar-footer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', marginTop: '12px', background: 'var(--clr-panel)', borderRadius: 'var(--radius-md)' }}>
           <div style={{ fontSize: '0.82rem', color: 'var(--clr-text-muted)' }}>
@@ -286,10 +258,7 @@ export default function Branches() {
               style={{ width: 'auto', padding: '4px 8px', fontSize: '0.82rem' }}
               aria-label="Rows per page"
             >
-              <option value={10}>10 / page</option>
-              <option value={25}>25 / page</option>
-              <option value={50}>50 / page</option>
-              <option value={100}>100 / page</option>
+              {[10, 25, 50, 100].map(s => <option key={s} value={s}>{s} / page</option>)}
             </select>
             <button className="btn-secondary" disabled={pagination.page === 1} onClick={() => pagination.setPage(pagination.page - 1)}>Prev</button>
             <span style={{ fontSize: '0.82rem', fontWeight: 600 }}>{pagination.page} / {pagination.totalPages}</span>
@@ -300,213 +269,88 @@ export default function Branches() {
 
       {isModalOpen && createPortal(
         <div className="modal-overlay">
-          <motion.div
-            className="glass-panel modal-container"
-            style={{ maxWidth: '600px' }}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-          >
+          <motion.div className="glass-panel modal-container" style={{ maxWidth: '600px' }} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
             <div className="modal-header">
               <h2 className="modal-title">{editingBranch ? 'Edit Branch' : 'New Branch'}</h2>
               <button className="btn-icon" onClick={() => setIsModalOpen(false)}>×</button>
             </div>
             <form onSubmit={handleSubmit}>
               <div className="modal-body form-row-2col">
-                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                  <label className="form-label">School / Center <span className="form-required">*</span></label>
+                <FormField label="School / Center" fullWidth>
                   <select className="form-control" value={formData.SCHL_BR_CENTER_ID} onChange={e => setFormData({...formData, SCHL_BR_CENTER_ID: e.target.value})} required disabled={isSchoolAdmin || isBranchAdmin}>
                     <option value="">Select School</option>
-                    {schools.map(school => (
-                      <option key={school.schl_mn_id || school.SCHL_MN_ID} value={school.schl_mn_id || school.SCHL_MN_ID}>
-                        {school.schl_mn_nm || school.SCHL_MN_NM}
-                      </option>
-                    ))}
+                    {schools.map(s => <option key={s.schl_mn_id || s.SCHL_MN_ID} value={s.schl_mn_id || s.SCHL_MN_ID}>{s.schl_mn_nm || s.SCHL_MN_NM}</option>)}
                   </select>
-                </div>
-                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                  <label className="form-label">Branch Name <span className="form-required">*</span></label>
-                  <input
-                    type="text"
-                    className={`form-control${errors.SCHL_BR_NM ? ' form-input-error' : ''}`}
-                    placeholder="e.g. North Campus"
-                    value={formData.SCHL_BR_NM}
-                    onChange={e => setFormData({...formData, SCHL_BR_NM: e.target.value})}
-                    required
-                  />
-                  {errors.SCHL_BR_NM && <span className="form-error-msg">{errors.SCHL_BR_NM}</span>}
-                </div>
-                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                  <label className="form-label">Address <span className="form-required">*</span></label>
-                  <input
-                    type="text"
-                    className={`form-control${errors.SCHL_BR_ADDRESS ? ' form-input-error' : ''}`}
-                    placeholder="Branch street address"
-                    value={formData.SCHL_BR_ADDRESS}
-                    onChange={e => setFormData({...formData, SCHL_BR_ADDRESS: e.target.value.replace(/[^a-zA-Z0-9\s,.\-\/]/g, '')})}
-                    required
-                  />
-                  {errors.SCHL_BR_ADDRESS && <span className="form-error-msg">{errors.SCHL_BR_ADDRESS}</span>}
-                </div>
-                <div className="form-group">
-                  <label className="form-label">State <span className="form-required">*</span></label>
-                  <select
-                    className={`form-control${errors.SCHL_BR_STATE ? ' form-input-error' : ''}`}
-                    value={formData.SCHL_BR_STATE}
-                    onChange={e => {
-                      const newState = e.target.value
-                      setFormData(prev => ({
-                        ...prev,
-                        SCHL_BR_STATE: newState
-                      }))
-                    }}
-                    required
-                  >
+                </FormField>
+
+                <FormField label="Branch Name" error={errors.SCHL_BR_NM} fullWidth>
+                  <input type="text" className={`form-control${errors.SCHL_BR_NM ? ' form-input-error' : ''}`} placeholder="e.g. North Campus" value={formData.SCHL_BR_NM} onChange={e => setFormData({...formData, SCHL_BR_NM: e.target.value})} required />
+                </FormField>
+
+                <FormField label="Address" error={errors.SCHL_BR_ADDRESS} fullWidth>
+                  <input type="text" className={`form-control${errors.SCHL_BR_ADDRESS ? ' form-input-error' : ''}`} placeholder="Branch street address" value={formData.SCHL_BR_ADDRESS} onChange={e => setFormData({...formData, SCHL_BR_ADDRESS: e.target.value.replace(/[^a-zA-Z0-9\s,.\-\/]/g, '')})} required />
+                </FormField>
+
+                <FormField label="State" error={errors.SCHL_BR_STATE}>
+                  <select className={`form-control${errors.SCHL_BR_STATE ? ' form-input-error' : ''}`} value={formData.SCHL_BR_STATE} onChange={e => setFormData(prev => ({ ...prev, SCHL_BR_STATE: e.target.value }))} required>
                     <option value="">Select State</option>
-                    {INDIAN_STATES.map(s => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
+                    {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
-                  {errors.SCHL_BR_STATE && <span className="form-error-msg">{errors.SCHL_BR_STATE}</span>}
-                </div>
-                <div className="form-group">
-                  <label className="form-label">City <span className="form-required">*</span></label>
-                  <select
-                    className={`form-control${errors.SCHL_BR_CITY ? ' form-input-error' : ''}`}
-                    value={formData.SCHL_BR_CITY}
-                    onChange={e => {
-                      const newCity = e.target.value
-                      const matchedState = Object.keys(CITIES_BY_STATE).find(st => CITIES_BY_STATE[st].includes(newCity))
-                      setFormData(prev => ({
-                        ...prev,
-                        SCHL_BR_CITY: newCity,
-                        ...(matchedState && !prev.SCHL_BR_STATE ? { SCHL_BR_STATE: matchedState } : {})
-                      }))
-                    }}
-                    required
-                  >
+                </FormField>
+
+                <FormField label="City" error={errors.SCHL_BR_CITY}>
+                  <select className={`form-control${errors.SCHL_BR_CITY ? ' form-input-error' : ''}`} value={formData.SCHL_BR_CITY} onChange={e => {
+                    const newCity = e.target.value
+                    const matchedState = Object.keys(CITIES_BY_STATE).find(st => CITIES_BY_STATE[st].includes(newCity))
+                    setFormData(prev => ({ ...prev, SCHL_BR_CITY: newCity, ...(matchedState && !prev.SCHL_BR_STATE ? { SCHL_BR_STATE: matchedState } : {}) }))
+                  }} required>
                     <option value="">Select City</option>
-                    {(() => {
-                      let cityOptions = []
-                      if (formData.SCHL_BR_STATE && CITIES_BY_STATE[formData.SCHL_BR_STATE]) {
-                        cityOptions = [...CITIES_BY_STATE[formData.SCHL_BR_STATE]]
-                      } else {
-                        cityOptions = ALL_INDIAN_CITIES || []
-                      }
-                      if (formData.SCHL_BR_CITY && !cityOptions.includes(formData.SCHL_BR_CITY)) {
-                        cityOptions = [formData.SCHL_BR_CITY, ...cityOptions]
-                      }
-                      return cityOptions.map(c => (
-                        <option key={c} value={c}>{c}</option>
-                      ))
-                    })()}
+                    {cityOptions.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
-                  {errors.SCHL_BR_CITY && <span className="form-error-msg">{errors.SCHL_BR_CITY}</span>}
-                </div>
-                <div className="form-group">
-                  <label className="form-label">PIN Code <span className="form-required">*</span></label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    className={`form-control${errors.SCHL_BR_PIN ? ' form-input-error' : ''}`}
-                    maxLength={6}
-                    placeholder="e.g. 400001"
-                    value={formData.SCHL_BR_PIN}
-                    onChange={e => setFormData({...formData, SCHL_BR_PIN: e.target.value.replace(/[^0-9]/g, '').slice(0, 6)})}
-                    onKeyPress={e => { if (!/[0-9]/.test(e.key)) e.preventDefault(); }}
-                    required
-                  />
-                  {errors.SCHL_BR_PIN && <span className="form-error-msg">{errors.SCHL_BR_PIN}</span>}
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Country <span className="form-required">*</span></label>
-                  <select
-                    className={`form-control${errors.SCHL_BR_COUNTRY ? ' form-input-error' : ''}`}
-                    value={formData.SCHL_BR_COUNTRY}
-                    onChange={e => setFormData({...formData, SCHL_BR_COUNTRY: e.target.value})}
-                    required
-                  >
+                </FormField>
+
+                <FormField label="PIN Code" error={errors.SCHL_BR_PIN}>
+                  <input type="text" inputMode="numeric" maxLength={6} placeholder="e.g. 400001" className={`form-control${errors.SCHL_BR_PIN ? ' form-input-error' : ''}`} value={formData.SCHL_BR_PIN} onChange={e => setFormData({...formData, SCHL_BR_PIN: e.target.value.replace(/[^0-9]/g, '').slice(0, 6)})} onKeyPress={e => { if (!/[0-9]/.test(e.key)) e.preventDefault() }} required />
+                </FormField>
+
+                <FormField label="Country" error={errors.SCHL_BR_COUNTRY}>
+                  <select className={`form-control${errors.SCHL_BR_COUNTRY ? ' form-input-error' : ''}`} value={formData.SCHL_BR_COUNTRY} onChange={e => setFormData({...formData, SCHL_BR_COUNTRY: e.target.value})} required>
                     <option value="">Select Country</option>
-                    {COUNTRIES.map(c => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
+                    {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
-                  {errors.SCHL_BR_COUNTRY && <span className="form-error-msg">{errors.SCHL_BR_COUNTRY}</span>}
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Medium <span className="form-required">*</span></label>
-                  <select
-                    className={`form-control${errors.SCHL_BR_MEDIUM ? ' form-input-error' : ''}`}
-                    value={formData.SCHL_BR_MEDIUM}
-                    onChange={e => setFormData({...formData, SCHL_BR_MEDIUM: e.target.value})}
-                    required
-                  >
+                </FormField>
+
+                <FormField label="Medium" error={errors.SCHL_BR_MEDIUM}>
+                  <select className={`form-control${errors.SCHL_BR_MEDIUM ? ' form-input-error' : ''}`} value={formData.SCHL_BR_MEDIUM} onChange={e => setFormData({...formData, SCHL_BR_MEDIUM: e.target.value})} required>
                     <option value="">Select Medium</option>
-                    {MEDIUMS.map(m => (
-                      <option key={m} value={m}>{m}</option>
-                    ))}
+                    {MEDIUMS.map(m => <option key={m} value={m}>{m}</option>)}
                   </select>
-                  {errors.SCHL_BR_MEDIUM && <span className="form-error-msg">{errors.SCHL_BR_MEDIUM}</span>}
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Board <span className="form-required">*</span></label>
-                  <select
-                    className={`form-control${errors.SCHL_BR_BOARD ? ' form-input-error' : ''}`}
-                    value={formData.SCHL_BR_BOARD}
-                    onChange={e => setFormData({...formData, SCHL_BR_BOARD: e.target.value})}
-                    required
-                  >
+                </FormField>
+
+                <FormField label="Board" error={errors.SCHL_BR_BOARD}>
+                  <select className={`form-control${errors.SCHL_BR_BOARD ? ' form-input-error' : ''}`} value={formData.SCHL_BR_BOARD} onChange={e => setFormData({...formData, SCHL_BR_BOARD: e.target.value})} required>
                     <option value="">Select Board</option>
-                    {BOARDS.map(b => (
-                      <option key={b} value={b}>{b}</option>
-                    ))}
+                    {BOARDS.map(b => <option key={b} value={b}>{b}</option>)}
                   </select>
-                  {errors.SCHL_BR_BOARD && <span className="form-error-msg">{errors.SCHL_BR_BOARD}</span>}
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Email ID <span className="form-required">*</span></label>
+                </FormField>
+
+                <FormField label="Email ID" error={errors.SCHL_BR_EMAILID}>
                   <input type="email" className={`form-control${errors.SCHL_BR_EMAILID ? ' form-input-error' : ''}`} value={formData.SCHL_BR_EMAILID} onChange={e => setFormData({...formData, SCHL_BR_EMAILID: e.target.value})} required />
-                  {errors.SCHL_BR_EMAILID && <span className="form-error-msg">{errors.SCHL_BR_EMAILID}</span>}
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Contact No (10-digits) <span className="form-required">*</span></label>
-                  <input
-                    type="tel"
-                    className={`form-control${errors.SCHL_BR_CONTACTNO ? ' form-input-error' : ''}`}
-                    maxLength={10}
-                    placeholder="e.g. 9876543210"
-                    pattern="[6-9][0-9]{9}"
-                    title="Please enter a valid 10-digit Indian phone number starting with 6-9"
-                    value={formData.SCHL_BR_CONTACTNO}
-                    onChange={e => setFormData({...formData, SCHL_BR_CONTACTNO: e.target.value.replace(/[^0-9]/g, '').slice(0, 10)})}
-                    onKeyPress={e => { if (!/[0-9]/.test(e.key)) e.preventDefault(); }}
-                    required
-                  />
-                  {errors.SCHL_BR_CONTACTNO && <span className="form-error-msg">{errors.SCHL_BR_CONTACTNO}</span>}
-                </div>
+                </FormField>
+
+                <FormField label="Contact No (10-digits)" error={errors.SCHL_BR_CONTACTNO}>
+                  <input type="tel" maxLength={10} placeholder="e.g. 9876543210" className={`form-control${errors.SCHL_BR_CONTACTNO ? ' form-input-error' : ''}`} value={formData.SCHL_BR_CONTACTNO} onChange={e => setFormData({...formData, SCHL_BR_CONTACTNO: e.target.value.replace(/[^0-9]/g, '').slice(0, 10)})} onKeyPress={e => { if (!/[0-9]/.test(e.key)) e.preventDefault() }} required />
+                </FormField>
+
                 {!editingBranch && (
-                  <div className="form-group">
-                    <label className="form-label">Password (min 6 chars) <span className="form-required">*</span></label>
+                  <FormField label="Password (min 6 chars)" error={errors.SCHL_BR_PASSWORD}>
                     <div style={{ position: 'relative' }}>
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        className={`form-control${errors.SCHL_BR_PASSWORD ? ' form-input-error' : ''}`}
-                        style={{ paddingRight: '2.5rem' }}
-                        value={formData.SCHL_BR_PASSWORD}
-                        onChange={e => setFormData({...formData, SCHL_BR_PASSWORD: e.target.value})}
-                        minLength={6}
-                        required
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--clr-text-secondary, #666)' }}
-                        aria-label="Toggle password visibility"
-                      >
+                      <input type={showPassword ? 'text' : 'password'} className={`form-control${errors.SCHL_BR_PASSWORD ? ' form-input-error' : ''}`} style={{ paddingRight: '2.5rem' }} value={formData.SCHL_BR_PASSWORD} onChange={e => setFormData({...formData, SCHL_BR_PASSWORD: e.target.value})} minLength={6} required />
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--clr-text-secondary, #666)' }} aria-label="Toggle password visibility">
                         {showPassword ? <FaEyeSlash /> : <FaEye />}
                       </button>
                     </div>
-                    {errors.SCHL_BR_PASSWORD && <span className="form-error-msg">{errors.SCHL_BR_PASSWORD}</span>}
-                  </div>
+                  </FormField>
                 )}
               </div>
               <div className="modal-footer">
