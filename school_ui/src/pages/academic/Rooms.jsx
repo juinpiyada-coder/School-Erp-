@@ -92,8 +92,9 @@ export default function Rooms() {
     SCHL_BR_ISLAB: 'N'
   })
 
-  async function fetchRooms(branchesList = branches) {
+  async function fetchRooms(branchesList = null) {
     try {
+      const activeBranches = (branchesList && branchesList.length > 0) ? branchesList : branches
       const { data } = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/academic/rooms?limit=1000`)
       let items = Array.isArray(data) ? data : data?.data || []
       
@@ -101,12 +102,12 @@ export default function Rooms() {
       const isSchoolAdmin = (user.user_role || user.role_id) === 'R_SCHOOLADMIN' || user.role === 'R_SCHOOLADMIN'
       const isBranchAdminRole = (user.user_role || user.role_id) === 'R_BRANCHADMIN' || user.role === 'R_BRANCHADMIN'
       
-      if ((isSchoolAdmin || isBranchAdminRole) && branchesList && branchesList.length > 0) {
-          const validIds = branchesList.map(b => String(b.SCHL_BR_ID || b.schl_br_id))
+      if ((isSchoolAdmin || isBranchAdminRole) && activeBranches && activeBranches.length > 0) {
+          const validIds = activeBranches.map(b => String(b.SCHL_BR_ID || b.schl_br_id))
           items = items.filter(r => validIds.includes(String(r.SCHL_BR_REF_ID || r.schl_br_ref_id || r.branchId)))
       }
       
-      setRooms(items.map(r => normaliseRoom(r, branchesList)))
+      setRooms(items.map(r => normaliseRoom(r, activeBranches)))
     } catch (err) {
       console.error('Failed to fetch rooms:', err)
       toast.error('Failed to load rooms')
@@ -243,11 +244,25 @@ export default function Rooms() {
       const isBranchAdminRole = (user.user_role || user.role_id) === 'R_BRANCHADMIN' || user.role === 'R_BRANCHADMIN'
       
       if (isSchoolAdmin) {
-         const centerId = String((user.user_id || user.id))
-         list = list.filter(b => String(b.SCHL_BR_CENTER_ID || b.schl_br_center_id) === centerId)
+         const centerIds = [user.school_id, user.user_school_id, user.SCHL_ID, user.user_id, user.id, user.userId]
+           .filter(Boolean)
+           .map(String)
+         if (centerIds.length > 0) {
+           const matched = list.filter(b => centerIds.includes(String(b.SCHL_BR_CENTER_ID || b.schl_br_center_id)))
+           if (matched.length > 0) {
+             list = matched
+           }
+         }
       } else if (isBranchAdminRole) {
-         const branchId = String((user.user_id || user.id))
-         list = list.filter(b => String(b.SCHL_BR_ID || b.schl_br_id) === branchId)
+         const branchIds = [user.branch_id, user.user_branch_id, user.SCHL_BR_ID, user.user_id, user.id, user.userId]
+           .filter(Boolean)
+           .map(String)
+         if (branchIds.length > 0) {
+           const matched = list.filter(b => branchIds.includes(String(b.SCHL_BR_ID || b.schl_br_id)))
+           if (matched.length > 0) {
+             list = matched
+           }
+         }
       }
       
       setBranches(list)

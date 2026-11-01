@@ -15,24 +15,36 @@ class BranchModel {
         if ($user) {
             $roleId = strtoupper($user['role_id'] ?? $user['user_role'] ?? '');
             if ($roleId === 'R_SCHOOLADMIN' || strpos($roleId, 'SCHOOL') !== false) {
-                $schoolId = $user['school_id'] ?? null;
-                $userId = $user['userId'] ?? null;
-                if ($schoolId && $userId && $schoolId !== $userId) {
-                    $sql .= " AND (SCHL_BR_CENTER_ID = ? OR SCHL_BR_CENTER_ID = ?)";
-                    $params[] = $schoolId;
-                    $params[] = $userId;
-                } else {
-                    $targetId = $schoolId ?: $userId;
-                    if ($targetId) {
-                        $sql .= " AND SCHL_BR_CENTER_ID = ?";
-                        $params[] = $targetId;
+                $candidateIds = array_values(array_filter(array_unique([
+                    $user['school_id'] ?? null,
+                    $user['user_school_id'] ?? null,
+                    $user['SCHL_ID'] ?? null,
+                    $user['userId'] ?? null,
+                    $user['user_id'] ?? null,
+                    $user['id'] ?? null
+                ])));
+                if (!empty($candidateIds)) {
+                    $placeholders = implode(',', array_fill(0, count($candidateIds), '?'));
+                    $sql .= " AND SCHL_BR_CENTER_ID IN ($placeholders)";
+                    foreach ($candidateIds as $cid) {
+                        $params[] = $cid;
                     }
                 }
             } elseif ($roleId === 'R_BRANCHADMIN' || strpos($roleId, 'BRANCH') !== false) {
-                $branchId = $user['branch_id'] ?? $user['userId'] ?? null;
-                if ($branchId) {
-                    $sql .= " AND SCHL_BR_ID = ?";
-                    $params[] = $branchId;
+                $candidateBranchIds = array_values(array_filter(array_unique([
+                    $user['branch_id'] ?? null,
+                    $user['user_branch_id'] ?? null,
+                    $user['SCHL_BR_ID'] ?? null,
+                    $user['userId'] ?? null,
+                    $user['user_id'] ?? null,
+                    $user['id'] ?? null
+                ])));
+                if (!empty($candidateBranchIds)) {
+                    $placeholders = implode(',', array_fill(0, count($candidateBranchIds), '?'));
+                    $sql .= " AND SCHL_BR_ID IN ($placeholders)";
+                    foreach ($candidateBranchIds as $bid) {
+                        $params[] = $bid;
+                    }
                 }
             }
         }
@@ -52,24 +64,36 @@ class BranchModel {
         if ($user) {
             $roleId = strtoupper($user['role_id'] ?? $user['user_role'] ?? '');
             if ($roleId === 'R_SCHOOLADMIN' || strpos($roleId, 'SCHOOL') !== false) {
-                $schoolId = $user['school_id'] ?? null;
-                $userId = $user['userId'] ?? null;
-                if ($schoolId && $userId && $schoolId !== $userId) {
-                    $sql .= " AND (SCHL_BR_CENTER_ID = ? OR SCHL_BR_CENTER_ID = ?)";
-                    $params[] = $schoolId;
-                    $params[] = $userId;
-                } else {
-                    $targetId = $schoolId ?: $userId;
-                    if ($targetId) {
-                        $sql .= " AND SCHL_BR_CENTER_ID = ?";
-                        $params[] = $targetId;
+                $candidateIds = array_values(array_filter(array_unique([
+                    $user['school_id'] ?? null,
+                    $user['user_school_id'] ?? null,
+                    $user['SCHL_ID'] ?? null,
+                    $user['userId'] ?? null,
+                    $user['user_id'] ?? null,
+                    $user['id'] ?? null
+                ])));
+                if (!empty($candidateIds)) {
+                    $placeholders = implode(',', array_fill(0, count($candidateIds), '?'));
+                    $sql .= " AND SCHL_BR_CENTER_ID IN ($placeholders)";
+                    foreach ($candidateIds as $cid) {
+                        $params[] = $cid;
                     }
                 }
             } elseif ($roleId === 'R_BRANCHADMIN' || strpos($roleId, 'BRANCH') !== false) {
-                $branchId = $user['branch_id'] ?? $user['userId'] ?? null;
-                if ($branchId) {
-                    $sql .= " AND SCHL_BR_ID = ?";
-                    $params[] = $branchId;
+                $candidateBranchIds = array_values(array_filter(array_unique([
+                    $user['branch_id'] ?? null,
+                    $user['user_branch_id'] ?? null,
+                    $user['SCHL_BR_ID'] ?? null,
+                    $user['userId'] ?? null,
+                    $user['user_id'] ?? null,
+                    $user['id'] ?? null
+                ])));
+                if (!empty($candidateBranchIds)) {
+                    $placeholders = implode(',', array_fill(0, count($candidateBranchIds), '?'));
+                    $sql .= " AND SCHL_BR_ID IN ($placeholders)";
+                    foreach ($candidateBranchIds as $bid) {
+                        $params[] = $bid;
+                    }
                 }
             }
         }

@@ -173,7 +173,7 @@ class AcademicController {
                 $userRole = strtoupper($this->user['role_id'] ?? $this->user['user_role'] ?? '');
                 $isSchoolLevel = ($userRole === 'R_SCHOOLADMIN' || strpos($userRole, 'SCHOOL') !== false);
                 if ($this->user && $isSchoolLevel) {
-                    $effectiveSchoolId = $this->user['school_id'] ?? $this->user['userId'] ?? null;
+                    $effectiveSchoolId = $this->user['school_id'] ?? $this->user['user_school_id'] ?? $this->user['SCHL_ID'] ?? $this->user['userId'] ?? $this->user['user_id'] ?? null;
                     if ($effectiveSchoolId && (empty($data['SCHL_BR_CENTER_ID']) || $data['SCHL_BR_CENTER_ID'] === 'null')) {
                         $data['SCHL_BR_CENTER_ID'] = $effectiveSchoolId;
                     }
@@ -225,7 +225,7 @@ class AcademicController {
                 $userRole = strtoupper($this->user['role_id'] ?? $this->user['user_role'] ?? '');
                 $isSchoolLevel = ($userRole === 'R_SCHOOLADMIN' || strpos($userRole, 'SCHOOL') !== false);
                 if ($this->user && $isSchoolLevel) {
-                    $schoolId = $this->user['school_id'] ?? $this->user['userId'] ?? null;
+                    $schoolId = $this->user['school_id'] ?? $this->user['user_school_id'] ?? $this->user['SCHL_ID'] ?? $this->user['userId'] ?? $this->user['user_id'] ?? null;
                     if ($schoolId && (empty($data['SCHL_BR_CENTER_ID']) || $data['SCHL_BR_CENTER_ID'] === 'null')) {
                         $data['SCHL_BR_CENTER_ID'] = $schoolId;
                     }
