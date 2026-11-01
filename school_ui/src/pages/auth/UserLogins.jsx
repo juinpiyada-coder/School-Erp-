@@ -141,6 +141,13 @@ export default function UserLogins() {
     else if (!/^[a-zA-Z0-9_.]+$/.test(formData.user_id.trim())) errs.user_id = 'User ID can only contain letters, numbers, dots and underscores.'
     else if (formData.user_id.trim().length < 3) errs.user_id = 'User ID must be at least 3 characters long'
     
+    if (formData.user_first_name && !/^[a-zA-Z\s]+$/.test(formData.user_first_name.trim())) {
+      errs.user_first_name = 'First name can only contain letters and spaces.'
+    }
+    if (formData.user_last_name && !/^[a-zA-Z\s]+$/.test(formData.user_last_name.trim())) {
+      errs.user_last_name = 'Last name can only contain letters and spaces.'
+    }
+
     if (!formData.user_email_id.trim()) errs.user_email_id = 'Email address is required.'
     else if (!/^\S+@\S+\.\S+$/.test(formData.user_email_id)) errs.user_email_id = 'Please enter a valid email address'
     
@@ -474,21 +481,23 @@ export default function UserLogins() {
                     <label className="form-label">First Name</label>
                     <input
                       type="text"
-                      className="form-control"
+                      className={`form-control${errors.user_first_name ? ' form-input-error' : ''}`}
                       placeholder="e.g. John"
                       value={formData.user_first_name}
-                      onChange={(e) => setFormData({ ...formData, user_first_name: e.target.value })}
+                      onChange={(e) => setFormData({ ...formData, user_first_name: e.target.value.replace(/[^a-zA-Z\s]/g, '') })}
                     />
+                    {errors.user_first_name && <span className="form-error-msg">{errors.user_first_name}</span>}
                   </div>
                   <div className="form-group">
                     <label className="form-label">Last Name</label>
                     <input
                       type="text"
-                      className="form-control"
+                      className={`form-control${errors.user_last_name ? ' form-input-error' : ''}`}
                       placeholder="e.g. Doe"
                       value={formData.user_last_name}
-                      onChange={(e) => setFormData({ ...formData, user_last_name: e.target.value })}
+                      onChange={(e) => setFormData({ ...formData, user_last_name: e.target.value.replace(/[^a-zA-Z\s]/g, '') })}
                     />
+                    {errors.user_last_name && <span className="form-error-msg">{errors.user_last_name}</span>}
                   </div>
                 </div>
 
