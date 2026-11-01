@@ -77,10 +77,8 @@ export default function Roles() {
       const roleId = formData.MAS_role_id.trim()
       if (!roleId) {
         errs.MAS_role_id = 'Role ID is required.'
-      } else if (/^\d+$/.test(roleId)) {
-        errs.MAS_role_id = 'Role ID cannot be numbers only. It must contain letters (e.g. R_TEACHER or ADMIN1).'
-      } else if (!/^[a-zA-Z0-9_-]+$/.test(roleId) || !/[a-zA-Z]/.test(roleId)) {
-        errs.MAS_role_id = 'Role ID must be alphanumeric and contain at least one letter.'
+      } else if (!/^[a-zA-Z_-]+$/.test(roleId)) {
+        errs.MAS_role_id = 'Role ID cannot contain numbers. Only letters, underscores, and hyphens are allowed (e.g. R_TEACHER).'
       }
     }
     if (!formData.MAS_role_DESC.trim()) errs.MAS_role_DESC = 'Role description is required.'
@@ -261,7 +259,7 @@ export default function Roles() {
                       className={`form-control${errors.MAS_role_id ? ' form-input-error' : ''}`}
                       placeholder="e.g. R_SUPERADMIN"
                       value={formData.MAS_role_id}
-                      onChange={(e) => setFormData({ ...formData, MAS_role_id: e.target.value.replace(/[^a-zA-Z0-9_]/g, '') })}
+                      onChange={(e) => setFormData({ ...formData, MAS_role_id: e.target.value.replace(/[^a-zA-Z_-]/g, '') })}
                       required
                     />
                     {errors.MAS_role_id && <span className="form-error-msg">{errors.MAS_role_id}</span>}
