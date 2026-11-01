@@ -151,8 +151,8 @@ export default function UserLogins() {
     const emailTrimmed = formData.user_email_id.trim()
     if (!emailTrimmed) {
       errs.user_email_id = 'Email address is required.'
-    } else if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(emailTrimmed)) {
-      errs.user_email_id = 'Please enter a valid email address (e.g. name@school.edu).'
+    } else if (!/^[a-zA-Z._-]+@[a-zA-Z.-]+\.[a-zA-Z]{2,}$/.test(emailTrimmed)) {
+      errs.user_email_id = 'Please enter a valid email address (e.g. name@school.edu). Numbers and symbols like $, % are not allowed.'
     }
     
     if (!editingUser) {
@@ -512,7 +512,11 @@ export default function UserLogins() {
                     className={`form-control${errors.user_email_id ? ' form-input-error' : ''}`}
                     placeholder="e.g. john@school.edu"
                     value={formData.user_email_id}
-                    onChange={(e) => setFormData({ ...formData, user_email_id: e.target.value.trim().toLowerCase() })}
+                    onChange={(e) => {
+                      // Disallow numbers and special characters like $, %, &, *, etc. Only allow letters, @, ., _, -
+                      const cleaned = e.target.value.toLowerCase().replace(/[^a-z@._-]/g, '')
+                      setFormData({ ...formData, user_email_id: cleaned })
+                    }}
                     required
                   />
                   {errors.user_email_id && <span className="form-error-msg">{errors.user_email_id}</span>}
