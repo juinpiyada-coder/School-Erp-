@@ -148,8 +148,12 @@ export default function UserLogins() {
       errs.user_last_name = 'Last name can only contain letters and spaces.'
     }
 
-    if (!formData.user_email_id.trim()) errs.user_email_id = 'Email address is required.'
-    else if (!/^\S+@\S+\.\S+$/.test(formData.user_email_id)) errs.user_email_id = 'Please enter a valid email address'
+    const emailTrimmed = formData.user_email_id.trim()
+    if (!emailTrimmed) {
+      errs.user_email_id = 'Email address is required.'
+    } else if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(emailTrimmed)) {
+      errs.user_email_id = 'Please enter a valid email address (e.g. name@school.edu).'
+    }
     
     if (!editingUser) {
       if (!formData.user_passwd) errs.user_passwd = 'Password is required.'
@@ -508,7 +512,7 @@ export default function UserLogins() {
                     className={`form-control${errors.user_email_id ? ' form-input-error' : ''}`}
                     placeholder="e.g. john@school.edu"
                     value={formData.user_email_id}
-                    onChange={(e) => setFormData({ ...formData, user_email_id: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, user_email_id: e.target.value.trim().toLowerCase() })}
                     required
                   />
                   {errors.user_email_id && <span className="form-error-msg">{errors.user_email_id}</span>}
