@@ -23,6 +23,19 @@ class BranchModel {
                     $user['user_id'] ?? null,
                     $user['id'] ?? null
                 ])));
+                // Also resolve school ID from MSTR_SCHOOL_MAIN if user_id or email matches
+                if (!empty($user['user_id']) || !empty($user['userId']) || !empty($user['email'])) {
+                    try {
+                        $uid = $user['user_id'] ?? $user['userId'] ?? '';
+                        $uemail = $user['email'] ?? '';
+                        $stmtSch = $this->db->prepare("SELECT schl_mn_id FROM MSTR_SCHOOL_MAIN WHERE schl_mn_id = ? OR schl_mn_emailid = ? LIMIT 1");
+                        $stmtSch->execute([$uid, $uemail]);
+                        $foundSchId = $stmtSch->fetchColumn();
+                        if ($foundSchId && !in_array($foundSchId, $candidateIds)) {
+                            $candidateIds[] = $foundSchId;
+                        }
+                    } catch (Exception $e) {}
+                }
                 if (!empty($candidateIds)) {
                     $placeholders = implode(',', array_fill(0, count($candidateIds), '?'));
                     $sql .= " AND SCHL_BR_CENTER_ID IN ($placeholders)";
@@ -72,6 +85,19 @@ class BranchModel {
                     $user['user_id'] ?? null,
                     $user['id'] ?? null
                 ])));
+                // Also resolve school ID from MSTR_SCHOOL_MAIN if user_id or email matches
+                if (!empty($user['user_id']) || !empty($user['userId']) || !empty($user['email'])) {
+                    try {
+                        $uid = $user['user_id'] ?? $user['userId'] ?? '';
+                        $uemail = $user['email'] ?? '';
+                        $stmtSch = $this->db->prepare("SELECT schl_mn_id FROM MSTR_SCHOOL_MAIN WHERE schl_mn_id = ? OR schl_mn_emailid = ? LIMIT 1");
+                        $stmtSch->execute([$uid, $uemail]);
+                        $foundSchId = $stmtSch->fetchColumn();
+                        if ($foundSchId && !in_array($foundSchId, $candidateIds)) {
+                            $candidateIds[] = $foundSchId;
+                        }
+                    } catch (Exception $e) {}
+                }
                 if (!empty($candidateIds)) {
                     $placeholders = implode(',', array_fill(0, count($candidateIds), '?'));
                     $sql .= " AND SCHL_BR_CENTER_ID IN ($placeholders)";

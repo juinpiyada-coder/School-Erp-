@@ -185,6 +185,9 @@ class AcademicController {
                         Response::error("$field is required", 400);
                     }
                 }
+                if (!preg_match('/^[a-zA-Z0-9\s]+$/', trim($data['SCHL_BR_NM']))) {
+                    Response::error("Branch name can only contain letters, numbers, and spaces", 400);
+                }
                 if (empty($data['SCHL_BR_ID'])) {
                     $data['SCHL_BR_ID'] = strtoupper(uniqid('BR_'));
                 }
@@ -229,6 +232,9 @@ class AcademicController {
                     if ($schoolId && (empty($data['SCHL_BR_CENTER_ID']) || $data['SCHL_BR_CENTER_ID'] === 'null')) {
                         $data['SCHL_BR_CENTER_ID'] = $schoolId;
                     }
+                }
+                if (isset($data['SCHL_BR_NM']) && !preg_match('/^[a-zA-Z0-9\s]+$/', trim($data['SCHL_BR_NM']))) {
+                    Response::error("Branch name can only contain letters, numbers, and spaces", 400);
                 }
                 try {
                     $this->branchModel->update($id, $data);

@@ -107,7 +107,11 @@ export default function Branches() {
   async function handleSubmit(e) {
     e.preventDefault()
     const errs = {}
-    if (!formData.SCHL_BR_NM.trim()) errs.SCHL_BR_NM = 'Branch name is required.'
+    if (!formData.SCHL_BR_NM.trim()) {
+      errs.SCHL_BR_NM = 'Branch name is required.'
+    } else if (!/^[a-zA-Z0-9\s]+$/.test(formData.SCHL_BR_NM.trim())) {
+      errs.SCHL_BR_NM = 'Branch name can only contain letters, numbers, and spaces.'
+    }
     if (!formData.SCHL_BR_ADDRESS.trim()) errs.SCHL_BR_ADDRESS = 'Address is required.'
     if (!formData.SCHL_BR_CITY) errs.SCHL_BR_CITY = 'Please select a city.'
     if (!formData.SCHL_BR_STATE) errs.SCHL_BR_STATE = 'Please select a state.'
@@ -284,7 +288,19 @@ export default function Branches() {
                 </FormField>
 
                 <FormField label="Branch Name" error={errors.SCHL_BR_NM} fullWidth>
-                  <input type="text" className={`form-control${errors.SCHL_BR_NM ? ' form-input-error' : ''}`} placeholder="e.g. North Campus" value={formData.SCHL_BR_NM} onChange={e => setFormData({...formData, SCHL_BR_NM: e.target.value})} required />
+                  <input
+                    type="text"
+                    className={`form-control${errors.SCHL_BR_NM ? ' form-input-error' : ''}`}
+                    placeholder="e.g. North Campus"
+                    value={formData.SCHL_BR_NM}
+                    onChange={e => setFormData({ ...formData, SCHL_BR_NM: e.target.value.replace(/[^a-zA-Z0-9\s]/g, '') })}
+                    onKeyPress={e => {
+                      if (!/[a-zA-Z0-9\s]/.test(e.key)) {
+                        e.preventDefault()
+                      }
+                    }}
+                    required
+                  />
                 </FormField>
 
                 <FormField label="Address" error={errors.SCHL_BR_ADDRESS} fullWidth>

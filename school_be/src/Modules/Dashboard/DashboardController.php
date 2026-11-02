@@ -32,9 +32,20 @@ class DashboardController {
             $scoped = null; // Populated directly for teacher/student/guardian roles
 
             if ($roleId === 'R_BRANCHADMIN') {
-                $branchId = $user['userId']; // Force branch admin to only see their branch
+                $branchId = $user['branch_id'] ?? $user['user_branch_id'] ?? $user['userId']; // Force branch admin to only see their branch
             } elseif ($roleId === 'R_SCHOOLADMIN') {
-                $schoolId = $user['userId']; // School admin sees all branches for their school
+                $schoolId = $user['school_id'] ?? $user['user_school_id'] ?? $user['userId'] ?? null;
+                // Verify or lookup if schoolId is user login ID rather than school code
+                if (!empty($userEmail) || !empty($schoolId)) {
+                    try {
+                        $schCheck = $this->db->prepare("SELECT schl_mn_id FROM MSTR_SCHOOL_MAIN WHERE schl_mn_id = ? OR schl_mn_emailid = ? LIMIT 1");
+                        $schCheck->execute([$schoolId, $userEmail]);
+                        $foundId = $schCheck->fetchColumn();
+                        if ($foundId) {
+                            $schoolId = $foundId;
+                        }
+                    } catch (Exception $e) {}
+                }
                 // We don't overwrite $branchId because they might have selected a specific branch
             } elseif ($roleId === 'R_TEACHER') {
                 // Teachers were previously falling through to the network-wide overview below,

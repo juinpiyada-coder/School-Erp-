@@ -177,9 +177,13 @@ export default function SchoolAdminDashboard() {
               onChange={(e) => setSelectedBranch(e.target.value)}
             >
               <option value="">All Branches (Network Overview)</option>
-              {branches.map(b => (
-                <option key={b.SCHL_BR_ID} value={b.SCHL_BR_ID}>{b.SCHL_BR_NM}</option>
-              ))}
+              {branches.map(b => {
+                const id = b.SCHL_BR_ID || b.schl_br_id;
+                const name = b.SCHL_BR_NM || b.schl_br_nm || id;
+                return (
+                  <option key={id} value={id}>{name}</option>
+                );
+              })}
             </select>
             <div style={{ position: 'absolute', right: '12px', pointerEvents: 'none', color: 'var(--clr-text-muted)', fontSize: '0.75rem' }}>
               ▼
