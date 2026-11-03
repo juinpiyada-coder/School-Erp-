@@ -78,15 +78,25 @@ class AttendanceModel {
                 
         $params = [];
         if ($user) {
-            if ($user['role_id'] === 'R_SCHOOLADMIN') {
-                $sql .= " AND (b.SCHL_BR_CENTER_ID = ? OR ? IN ('usr_school', 'usr_super'))";
-                $params[] = $user['userId'];
-                $params[] = $user['userId'];
-            } elseif ($user['role_id'] === 'R_BRANCHADMIN') {
-                $sql .= " AND (b.SCHL_BR_ID = ? OR c.SCHL_BR_CENT_ID = ? OR ? IN ('usr_branch', 'usr_super'))";
-                $params[] = $user['userId'];
-                $params[] = $user['userId'];
-                $params[] = $user['userId'];
+            $roleId = strtoupper($user['role_id'] ?? $user['user_role'] ?? '');
+            $userId = $user['userId'] ?? $user['user_id'] ?? '';
+            $branchId = $user['branch_id'] ?? $user['SCHL_BR_ID'] ?? $user['center_id'] ?? '';
+            $schoolId = $user['school_id'] ?? $user['SCHL_ID'] ?? '';
+
+            if ($roleId === 'R_SUPERADMIN' || $roleId === 'SUPERADMIN') {
+                // Superadmin sees all
+            } elseif ($roleId === 'R_SCHOOLADMIN' || $roleId === 'R_SCHOOLEXECUTIVE') {
+                $sql .= " AND (b.SCHL_BR_CENTER_ID = ? OR b.SCHL_BR_CENTER_ID = ? OR ? IN ('usr_school', 'usr_super'))";
+                $params[] = $userId;
+                $params[] = $schoolId;
+                $params[] = $userId;
+            } elseif ($roleId === 'R_BRANCHADMIN' || $roleId === 'R_BRANCHEXECUTIVE' || $roleId === 'R_BRANCHOFFICIAL' || $roleId === 'R_TEACHER') {
+                $sql .= " AND (b.SCHL_BR_ID = ? OR b.SCHL_BR_ID = ? OR c.SCHL_BR_CENT_ID = ? OR c.SCHL_BR_CENT_ID = ? OR ? IN ('usr_branch', 'usr_super'))";
+                $params[] = $userId;
+                $params[] = $branchId;
+                $params[] = $userId;
+                $params[] = $branchId;
+                $params[] = $userId;
             }
         }
         
@@ -109,15 +119,25 @@ class AttendanceModel {
                 
         $params = [];
         if ($user) {
-            if ($user['role_id'] === 'R_SCHOOLADMIN') {
-                $sql .= " AND (b.SCHL_BR_CENTER_ID = ? OR ? IN ('usr_school', 'usr_super'))";
-                $params[] = $user['userId'];
-                $params[] = $user['userId'];
-            } elseif ($user['role_id'] === 'R_BRANCHADMIN') {
-                $sql .= " AND (b.SCHL_BR_ID = ? OR c.SCHL_BR_CENT_ID = ? OR ? IN ('usr_branch', 'usr_super'))";
-                $params[] = $user['userId'];
-                $params[] = $user['userId'];
-                $params[] = $user['userId'];
+            $roleId = strtoupper($user['role_id'] ?? $user['user_role'] ?? '');
+            $userId = $user['userId'] ?? $user['user_id'] ?? '';
+            $branchId = $user['branch_id'] ?? $user['SCHL_BR_ID'] ?? $user['center_id'] ?? '';
+            $schoolId = $user['school_id'] ?? $user['SCHL_ID'] ?? '';
+
+            if ($roleId === 'R_SUPERADMIN' || $roleId === 'SUPERADMIN') {
+                // Superadmin sees all
+            } elseif ($roleId === 'R_SCHOOLADMIN' || $roleId === 'R_SCHOOLEXECUTIVE') {
+                $sql .= " AND (b.SCHL_BR_CENTER_ID = ? OR b.SCHL_BR_CENTER_ID = ? OR ? IN ('usr_school', 'usr_super'))";
+                $params[] = $userId;
+                $params[] = $schoolId;
+                $params[] = $userId;
+            } elseif ($roleId === 'R_BRANCHADMIN' || $roleId === 'R_BRANCHEXECUTIVE' || $roleId === 'R_BRANCHOFFICIAL' || $roleId === 'R_TEACHER') {
+                $sql .= " AND (b.SCHL_BR_ID = ? OR b.SCHL_BR_ID = ? OR c.SCHL_BR_CENT_ID = ? OR c.SCHL_BR_CENT_ID = ? OR ? IN ('usr_branch', 'usr_super'))";
+                $params[] = $userId;
+                $params[] = $branchId;
+                $params[] = $userId;
+                $params[] = $branchId;
+                $params[] = $userId;
             }
         }
         $stmt = $this->db->prepare($sql);

@@ -317,9 +317,9 @@ function getNormalizedRoleCode() {
     if (raw.includes('STUDENT')) return 'R_STUDENT'
     if (raw.includes('OFFICE')) return 'R_OFFICESTAFF'
     if (raw.includes('PARENT') || raw.includes('GUARDIAN')) return 'R_GUARDIAN'
-    return 'R_SUPERADMIN'
+    return null
   } catch (e) {
-    return 'R_SUPERADMIN'
+    return null
   }
 }
 
@@ -360,6 +360,10 @@ export default function Sidebar() {
   const loadDbLinks = useCallback(async () => {
     try {
       const roleCode = getNormalizedRoleCode()
+      if (!roleCode) {
+        setDbNavSections([])
+        return
+      }
       // Enforce dedicated 4 modules for student and parent
       if (roleCode === 'R_STUDENT' || roleCode === 'R_GUARDIAN' || roleCode === 'R_PARENT') {
         setDbNavSections(null)
@@ -415,27 +419,38 @@ export default function Sidebar() {
       if (role.includes('student')) return ROLES_CONFIG.STUDENT
       if (role.includes('guardian') || role.includes('parent')) return ROLES_CONFIG.GUARDIAN
 
-      return ROLES_CONFIG.SUPER_ADMIN
+      return []
     } catch (e) {
-      return ROLES_CONFIG.SUPER_ADMIN
+      return []
     }
   }
 
-  const getSchoolName = () => {
+  const getBrandDetails = () => {
     try {
-      // 1. Check if custom appName is configured in WhiteLabel
-      if (settings?.WL_DESC?.appName && settings.WL_DESC.appName.trim() !== '') {
-        return settings.WL_DESC.appName
+      const user = JSON.parse(sessionStorage.getItem('e_school_user') || '{}')
+      const role = (user?.user_role || user?.role || user?.role_id || '').toLowerCase()
+      const isSuper = role.includes('super')
+
+      const branchName = user?.branch_name || user?.SCHL_BR_NM || user?.branchName || ''
+      const schoolName = user?.school_name || user?.schl_mn_nm || user?.center_name || user?.schoolName || ''
+
+      // If branch or student/teacher/parent: show Branch Name + School Name
+      if (!isSuper && (branchName || schoolName)) {
+        const title = branchName || schoolName
+        const subtitle = branchName && schoolName ? schoolName : (settings?.WL_DESC?.appName || 'School Campus')
+        return { title, subtitle }
       }
-      const user = JSON.parse(sessionStorage.getItem('e_school_user'))
-      // 2. Check if school/center name is in session user
-      if (user?.school_name || user?.schl_mn_nm || user?.center_name) {
-        return user.school_name || user.schl_mn_nm || user.center_name
-      }
-      // 3. Check role-based default
-      return 'MySkool ERP'
+
+      // Non-super, non-admin roles (student/parent/teacher/guardian) without branch/school name
+      // must never inherit the whitelabel "Qubix System Admin" title.
+      const userRole = (user?.user_role || user?.role || user?.role_id || '').toLowerCase()
+      if (userRole.includes('student')) return { title: 'Student Portal', subtitle: null }
+      if (userRole.includes('guardian') || userRole.includes('parent')) return { title: 'Guardian Portal', subtitle: null }
+      if (userRole.includes('teacher')) return { title: 'Teacher Portal', subtitle: null }
+      const title = settings?.WL_DESC?.appName || 'MySkool ERP'
+      return { title, subtitle: null }
     } catch (e) {
-      return settings?.WL_DESC?.appName || 'MySkool ERP'
+      return { title: settings?.WL_DESC?.appName || 'MySkool ERP', subtitle: null }
     }
   }
 
@@ -455,13 +470,13 @@ export default function Sidebar() {
       if (role.includes('student')) return 'Student Portal'
       if (role.includes('guardian') || role.includes('parent')) return 'Guardian Portal'
 
-      return 'School Admin Portal'
+      return 'Portal'
     } catch (e) {
-      return 'School Admin Portal'
+      return 'Portal'
     }
   }
 
-  const schoolDisplayName = getSchoolName()
+  const brandDetails = getBrandDetails()
   const portalTagline = getPortalTagline()
 
   // Filter nav sections by the search query (hidden in collapsed mode).
@@ -511,8 +526,15 @@ export default function Sidebar() {
 
         {!collapsed && (
           <div className="sidebar-brand-text">
-            <div className="sidebar-brand-name">{schoolDisplayName}</div>
-            <div className="sidebar-brand-tagline">{portalTagline}</div>
+            <div className="sidebar-brand-name" title={brandDetails.title}>{brandDetails.title}</div>
+            <div className="sidebar-brand-tagline">
+              {brandDetails.subtitle ? (
+                <span style={{ display: 'block', fontSize: '0.70rem', opacity: 0.9, color: 'var(--clr-text-muted, #93c5fd)', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {brandDetails.subtitle}
+                </span>
+              ) : null}
+              <span>{portalTagline}</span>
+            </div>
           </div>
         )}
       </div>

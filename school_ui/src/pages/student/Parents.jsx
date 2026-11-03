@@ -312,7 +312,7 @@ export default function Parents() {
       </div>
 
       {/* Stats */}
-      <div className="metrics-grid metrics-grid-3">
+      <div className="metrics-grid metrics-grid-2">
         <div className="glass-panel metric-card animate-fade-in-up">
           <div className="metric-icon-wrap metric-icon-blue"><FaUserFriends /></div>
           <div className="metric-label">Total Guardians</div>
@@ -322,12 +322,6 @@ export default function Parents() {
           <div className="metric-icon-wrap metric-icon-green"><FaCheckCircle /></div>
           <div className="metric-label">Active</div>
           <div className="metric-value">{loading ? '-' : parents.filter(p => p.status === 'Active').length}</div>
-        </div>
-        <div className="glass-panel metric-card animate-fade-in-up">
-          <div className="metric-icon-wrap metric-icon-orange"><FaCommentDots /></div>
-          <div className="metric-label">Unread Messages</div>
-          <div className="metric-value">14</div>
-          <span className="metric-delta metric-delta-down">▼ Needs attention</span>
         </div>
       </div>
 

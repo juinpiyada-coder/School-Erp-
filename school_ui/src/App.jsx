@@ -93,7 +93,7 @@ function AppShell() {
 export default function App() {
   return (
     <ThemeProvider>
-      <Router>
+      <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <RouteProgress />
         <ErrorBoundary>
           <Routes>
@@ -136,6 +136,17 @@ export default function App() {
               <Route path="/student/class-completion" element={<SubjectClassCompletion forcedRole="STUDENT" />} />
               <Route path="/student/attendance-report" element={<SubjectAttendanceReport forcedRole="STUDENT" />} />
               <Route path="/student/fees-report" element={<FeesDuePaidReport forcedRole="STUDENT" />} />
+
+              {/* Direct Aliases and Compatibility Routes */}
+              <Route path="/routine" element={<DailyRoutine />} />
+              <Route path="/daily-routine" element={<DailyRoutine />} />
+              <Route path="/attendance-report" element={<SubjectAttendanceReport />} />
+              <Route path="/class-completion" element={<SubjectClassCompletion />} />
+              <Route path="/fees-report" element={<FeesDuePaidReport />} />
+              <Route path="/attendance" element={<StudentAttendance />} />
+              <Route path="/schedule" element={<ClassSchedule />} />
+              <Route path="/student-attendance" element={<StudentAttendance />} />
+              <Route path="/parents" element={<Parents />} />
 
               {/* Parent Portal Dedicated Modules */}
               <Route path="/parent/routine" element={<DailyRoutine forcedRole="PARENT" />} />

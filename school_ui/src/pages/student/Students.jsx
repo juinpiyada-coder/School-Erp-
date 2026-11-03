@@ -44,11 +44,11 @@ function normaliseStudent(s) {
     branch_id: branchId,
     branchName: s.branchName || '',
     gender: s.STU_GENDER || s.gender || 'M',
-    guardian: s.guardianName || s.STU_PRNT_ID || s.STU_PRNT_REF_ID || s.stu_prnt_ref_id || s.guardian || 'N/A',
-    guardianName: s.guardianName || '',
+    guardian: s.guardianName || s.PRNT_NM || (parentList.find(p => String(p.PRNT_ID || p.id) === String(s.STU_PRNT_ID))?.PRNT_NM) || s.STU_PRNT_ID || 'N/A',
+    guardianName: s.guardianName || s.PRNT_NM || '',
     guardianPhone: s.guardianPhone || s.PRNT_CONTACTNO || '',
     guardianEmail: s.guardianEmail || s.PRNT_EMAILID || '',
-    guardianRelation: s.STU_RELATION_WITH_GUARDIAN || s.relationWithGuardian || s.relation || '',
+    guardianRelation: s.STU_RELATION_WITH_GUARDIAN || s.relationWithGuardian || s.PRNT_RELATION || '',
     email: s.STU_EMAILID || s.stu_emailid || s.email || '',
     attendance: attendancePct,
     totalDays,
@@ -259,7 +259,17 @@ export default function Students() {
         email: p.PRNT_EMAILID || p.PRNT_EMAIL || p.email || '',
         relation: p.PRNT_RELATION || p.relation || ''
       })))
-      setStudents(studentList.map(normaliseStudent))
+      setStudents(studentList.map(s => {
+        const matchedParent = parentList.find(p => String(p.PRNT_ID || p.id) === String(s.STU_PRNT_ID || s.guardianId))
+        const enriched = {
+          ...s,
+          guardianName: s.guardianName || s.PRNT_NM || matchedParent?.name || matchedParent?.PRNT_NM || '',
+          guardianPhone: s.guardianPhone || s.PRNT_CONTACTNO || matchedParent?.phone || matchedParent?.PRNT_CONTACTNO || '',
+          guardianEmail: s.guardianEmail || s.PRNT_EMAILID || matchedParent?.email || matchedParent?.PRNT_EMAILID || '',
+          guardianRelation: s.STU_RELATION_WITH_GUARDIAN || matchedParent?.relation || matchedParent?.PRNT_RELATION || ''
+        }
+        return normaliseStudent(enriched)
+      }))
     } catch (err) {
       console.error(err)
       setError('Couldn\u2019t load the student roster. Please try again.')
@@ -462,8 +472,9 @@ export default function Students() {
       exportKey: 'guardian',
       render: (s) => (
         <div>
-          <div className="font-bold">{s.guardian}</div>
-          {s.guardianRelation && <div className="text-muted" style={{ fontSize: '0.78rem' }}>{s.guardianRelation}</div>}
+          <div className="font-bold">{s.guardianName || s.guardian || 'N/A'}</div>
+          {s.guardianPhone && <div className="text-muted" style={{ fontSize: '0.78rem' }}>📞 {s.guardianPhone}</div>}
+          {s.guardianRelation && <div className="text-muted" style={{ fontSize: '0.75rem', color: 'var(--clr-accent)' }}>({s.guardianRelation})</div>}
         </div>
       )
     },

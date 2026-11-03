@@ -57,25 +57,34 @@ class ParentModel {
         if ($user) {
             $roleId = strtoupper($user['role_id'] ?? $user['user_role'] ?? '');
             $userId = $user['userId'] ?? $user['user_id'] ?? '';
-            if ($roleId === 'R_SCHOOLADMIN' || $roleId === 'R_SCHOOLEXECUTIVE') {
+            $branchId = $user['branch_id'] ?? $user['SCHL_BR_ID'] ?? $user['center_id'] ?? '';
+            $schoolId = $user['school_id'] ?? $user['SCHL_ID'] ?? '';
+
+            if ($roleId === 'R_SUPERADMIN' || $roleId === 'SUPERADMIN') {
+                // Superadmin sees all
+            } elseif ($roleId === 'R_SCHOOLADMIN' || $roleId === 'R_SCHOOLEXECUTIVE') {
                 $sql .= " AND (
                     p.PRNT_CREATEDBY = ? 
                     OR p.PRNT_CREATEDBY IS NULL 
                     OR p.PRNT_CREATEDBY = ''
                     OR ? IN ('usr_school', 'usr_super')
-                    OR p.PRNT_BRANCH_ID IN (SELECT SCHL_BR_ID FROM SCHL_BRANCH WHERE SCHL_BR_CENTER_ID = ?)
+                    OR p.PRNT_BRANCH_ID IN (SELECT SCHL_BR_ID FROM SCHL_BRANCH WHERE SCHL_BR_CENTER_ID = ? OR SCHL_BR_CENTER_ID = ?)
+                    OR p.PRNT_BRANCH_ID IS NULL
+                    OR p.PRNT_BRANCH_ID = ''
                     OR p.PRNT_ID IN (
                         SELECT s2.STU_PRNT_ID 
                         FROM SCHL_STU s2 
                         LEFT JOIN SCHL_BR_CLASS_SEC_SESSION sess ON s2.STU_BR_CLASS_ID = sess.SCHL_BR_CLASS_SEC_SESS_ID 
                         LEFT JOIN SCHL_BRANCH b ON sess.SCHL_BR_CLASS_SEC_SESS_BR_ID = b.SCHL_BR_ID 
-                        WHERE b.SCHL_BR_CENTER_ID = ?
+                        WHERE b.SCHL_BR_CENTER_ID = ? OR b.SCHL_BR_CENTER_ID = ?
                     )
                 )";
                 $params[] = $userId;
                 $params[] = $userId;
                 $params[] = $userId;
+                $params[] = $schoolId;
                 $params[] = $userId;
+                $params[] = $schoolId;
             } elseif ($roleId === 'R_BRANCHADMIN' || $roleId === 'R_BRANCHEXECUTIVE' || $roleId === 'R_BRANCHOFFICIAL') {
                 $sql .= " AND (
                     p.PRNT_CREATEDBY = ? 
@@ -83,17 +92,22 @@ class ParentModel {
                     OR p.PRNT_CREATEDBY = ''
                     OR ? IN ('usr_branch', 'usr_super')
                     OR p.PRNT_BRANCH_ID = ?
+                    OR p.PRNT_BRANCH_ID = ?
+                    OR p.PRNT_BRANCH_ID IS NULL
+                    OR p.PRNT_BRANCH_ID = ''
                     OR p.PRNT_ID IN (
                         SELECT s2.STU_PRNT_ID 
                         FROM SCHL_STU s2 
                         LEFT JOIN SCHL_BR_CLASS_SEC_SESSION sess ON s2.STU_BR_CLASS_ID = sess.SCHL_BR_CLASS_SEC_SESS_ID 
-                        WHERE sess.SCHL_BR_CLASS_SEC_SESS_BR_ID = ?
+                        WHERE sess.SCHL_BR_CLASS_SEC_SESS_BR_ID = ? OR sess.SCHL_BR_CLASS_SEC_SESS_BR_ID = ?
                     )
                 )";
                 $params[] = $userId;
                 $params[] = $userId;
                 $params[] = $userId;
+                $params[] = $branchId;
                 $params[] = $userId;
+                $params[] = $branchId;
             }
         }
 
@@ -123,25 +137,34 @@ class ParentModel {
         if ($user) {
             $roleId = strtoupper($user['role_id'] ?? $user['user_role'] ?? '');
             $userId = $user['userId'] ?? $user['user_id'] ?? '';
-            if ($roleId === 'R_SCHOOLADMIN' || $roleId === 'R_SCHOOLEXECUTIVE') {
+            $branchId = $user['branch_id'] ?? $user['SCHL_BR_ID'] ?? $user['center_id'] ?? '';
+            $schoolId = $user['school_id'] ?? $user['SCHL_ID'] ?? '';
+
+            if ($roleId === 'R_SUPERADMIN' || $roleId === 'SUPERADMIN') {
+                // Superadmin sees all
+            } elseif ($roleId === 'R_SCHOOLADMIN' || $roleId === 'R_SCHOOLEXECUTIVE') {
                 $sql .= " AND (
                     p.PRNT_CREATEDBY = ? 
                     OR p.PRNT_CREATEDBY IS NULL 
                     OR p.PRNT_CREATEDBY = ''
                     OR ? IN ('usr_school', 'usr_super')
-                    OR p.PRNT_BRANCH_ID IN (SELECT SCHL_BR_ID FROM SCHL_BRANCH WHERE SCHL_BR_CENTER_ID = ?)
+                    OR p.PRNT_BRANCH_ID IN (SELECT SCHL_BR_ID FROM SCHL_BRANCH WHERE SCHL_BR_CENTER_ID = ? OR SCHL_BR_CENTER_ID = ?)
+                    OR p.PRNT_BRANCH_ID IS NULL
+                    OR p.PRNT_BRANCH_ID = ''
                     OR p.PRNT_ID IN (
                         SELECT s2.STU_PRNT_ID 
                         FROM SCHL_STU s2 
                         LEFT JOIN SCHL_BR_CLASS_SEC_SESSION sess ON s2.STU_BR_CLASS_ID = sess.SCHL_BR_CLASS_SEC_SESS_ID 
                         LEFT JOIN SCHL_BRANCH b ON sess.SCHL_BR_CLASS_SEC_SESS_BR_ID = b.SCHL_BR_ID 
-                        WHERE b.SCHL_BR_CENTER_ID = ?
+                        WHERE b.SCHL_BR_CENTER_ID = ? OR b.SCHL_BR_CENTER_ID = ?
                     )
                 )";
                 $params[] = $userId;
                 $params[] = $userId;
                 $params[] = $userId;
+                $params[] = $schoolId;
                 $params[] = $userId;
+                $params[] = $schoolId;
             } elseif ($roleId === 'R_BRANCHADMIN' || $roleId === 'R_BRANCHEXECUTIVE' || $roleId === 'R_BRANCHOFFICIAL') {
                 $sql .= " AND (
                     p.PRNT_CREATEDBY = ? 
@@ -149,17 +172,22 @@ class ParentModel {
                     OR p.PRNT_CREATEDBY = ''
                     OR ? IN ('usr_branch', 'usr_super')
                     OR p.PRNT_BRANCH_ID = ?
+                    OR p.PRNT_BRANCH_ID = ?
+                    OR p.PRNT_BRANCH_ID IS NULL
+                    OR p.PRNT_BRANCH_ID = ''
                     OR p.PRNT_ID IN (
                         SELECT s2.STU_PRNT_ID 
                         FROM SCHL_STU s2 
                         LEFT JOIN SCHL_BR_CLASS_SEC_SESSION sess ON s2.STU_BR_CLASS_ID = sess.SCHL_BR_CLASS_SEC_SESS_ID 
-                        WHERE sess.SCHL_BR_CLASS_SEC_SESS_BR_ID = ?
+                        WHERE sess.SCHL_BR_CLASS_SEC_SESS_BR_ID = ? OR sess.SCHL_BR_CLASS_SEC_SESS_BR_ID = ?
                     )
                 )";
                 $params[] = $userId;
                 $params[] = $userId;
                 $params[] = $userId;
+                $params[] = $branchId;
                 $params[] = $userId;
+                $params[] = $branchId;
             }
         }
         $stmt = $this->db->prepare($sql);

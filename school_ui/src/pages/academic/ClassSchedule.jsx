@@ -1,5 +1,6 @@
 import axios from '../../lib/axios'
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { FaCalendarAlt, FaEdit, FaClock, FaPrint, FaTrash } from 'react-icons/fa'
 
@@ -66,6 +67,7 @@ function generatePeriodsFromMatrix(matrix) {
 }
 
 export default function ClassSchedule() {
+  const navigate = useNavigate()
   const [classes, setClasses] = useState([])
   const [branches, setBranches] = useState([])
   const [matrices, setMatrices] = useState([])
@@ -85,6 +87,12 @@ export default function ClassSchedule() {
       setRole((u?.user_role || u?.role || '').toLowerCase())
     } catch (e) {}
   }, [])
+
+  useEffect(() => {
+    if (role && (role.includes('student') || role.includes('guardian') || role.includes('parent'))) {
+      navigate('/student/routine', { replace: true })
+    }
+  }, [role, navigate])
 
   const isReadOnlyRole = role.includes('student') || role.includes('guardian') || role.includes('parent')
   

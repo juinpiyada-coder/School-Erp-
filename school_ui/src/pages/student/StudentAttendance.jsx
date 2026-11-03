@@ -1,5 +1,6 @@
 import axios from '../../lib/axios'
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { 
   FaSearch, 
@@ -25,6 +26,7 @@ const STATUS_COLORS = {
 }
 
 export default function StudentAttendance() {
+  const navigate = useNavigate()
   const [students, setStudents] = useState([])
   const [classes, setClasses] = useState([])
   const [branches, setBranches] = useState([])
@@ -63,6 +65,12 @@ export default function StudentAttendance() {
   }, [])
 
   const isReadOnlyRole = ['R_STUDENT', 'R_PARENT', 'R_GUARDIAN'].includes(role)
+
+  useEffect(() => {
+    if (role && isReadOnlyRole) {
+      navigate('/student/attendance-report', { replace: true })
+    }
+  }, [role, isReadOnlyRole, navigate])
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -254,14 +262,16 @@ export default function StudentAttendance() {
         const selectedClassName = (selectedClassObj?.name || '').trim().toLowerCase()
 
         const filteredList = stuItems.filter(s => {
-          const sClassId = s.class_id || s.STU_BR_CLASS_ID || s.stu_br_class_id || s.STU_CLASS_REF_ID || s.class_session_id
-          const sClassName = (s.className || s.SCHL_BR_CLASS_NM || '').trim().toLowerCase()
+          const sClassId = s.class_id || s.STU_BR_CLASS_ID || s.stu_br_class_id || s.STU_CLASS_REF_ID || s.class_session_id || s.SCHL_BR_CLS_ID
+          const sClassName = (s.className || s.SCHL_BR_CLASS_NM || s.class_name || '').trim().toLowerCase()
+          const sBranchId = s.branch_id || s.SCHL_BR_ID || s.branchId || ''
           
+          const matchesBranch = !selectedBranch || !sBranchId || String(sBranchId) === String(selectedBranch)
           const matchesClass = String(sClassId) === String(selectedClass) || 
                                (selectedClassName && sClassName === selectedClassName) ||
                                (s.class_session_id && String(s.class_session_id) === String(selectedClass))
           
-          return matchesClass
+          return matchesBranch && matchesClass
         }).map(s => ({
           id: s.STU_ID || s.stu_id || s.id,
           name: s.STU_NM || s.stu_nm || s.name || 'Unknown',

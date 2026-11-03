@@ -44,7 +44,29 @@ export default function Header() {
   const profileRef = useRef(null)
   const notifRef = useRef(null)
 
-  const meta = ROUTE_META[pathname] ?? { title: 'E-School Admin', breadcrumb: [] }
+  const [userData, setUserData] = useState(() => {
+    try {
+      return JSON.parse(sessionStorage.getItem('e_school_user')) || {}
+    } catch (e) {
+      return {}
+    }
+  })
+
+  const meta = ROUTE_META[pathname] ?? { title: null, breadcrumb: [] }
+
+  const getHeaderTitle = () => {
+    if (meta.title && meta.title !== 'E-School Admin') {
+      return meta.title
+    }
+    const branchName = userData?.branch_name || userData?.SCHL_BR_NM || userData?.branchName
+    const schoolName = userData?.school_name || userData?.schl_mn_nm || userData?.center_name || userData?.schoolName
+    if (branchName) {
+      return `${branchName}${schoolName ? ` · ${schoolName}` : ''}`
+    }
+    return schoolName || 'Student Portal'
+  }
+
+  const headerDisplayTitle = getHeaderTitle()
 
   const [liveNotifs, setLiveNotifs] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
@@ -93,14 +115,6 @@ export default function Header() {
     hour: '2-digit',
     minute: '2-digit',
     hour12: true,
-  })
-
-  const [userData, setUserData] = useState(() => {
-    try {
-      return JSON.parse(sessionStorage.getItem('e_school_user')) || {}
-    } catch (e) {
-      return {}
-    }
   })
 
   useEffect(() => {
@@ -206,7 +220,7 @@ export default function Header() {
           >
             <FaBars size={18} />
           </button>
-          <h1 className="header-page-title">{meta.title}</h1>
+          <h1 className="header-page-title">{headerDisplayTitle}</h1>
         </div>
         {meta.breadcrumb.length > 0 && (
           <nav className="header-breadcrumb" aria-label="Breadcrumb">
