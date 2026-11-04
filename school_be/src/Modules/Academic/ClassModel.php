@@ -64,6 +64,29 @@ class ClassModel {
             } elseif ($roleId === 'R_BRANCHADMIN' || $roleId === 'R_BRANCHEXECUTIVE' || $roleId === 'R_BRANCHOFFICIAL') {
                 $sql .= " AND c.SCHL_BR_CENT_ID = ?";
                 $params[] = $userId;
+            } elseif ($roleId === 'R_TEACHER' || $roleId === 'TEACHER' || strpos($roleId, 'TEACHER') !== false) {
+                $userEmail = $user['email'] ?? $user['user_email_id'] ?? '';
+                $sql .= " AND c.SCHL_BR_CLS_ID IN (
+                    SELECT tchr.BR_TCHR_ASSIGNED_CLASS_ID 
+                    FROM SCHL_BR_TCHR tchr 
+                    WHERE (tchr.BR_TCHR_ID = ? OR (tchr.BR_TCHR_EMAI_ID = ? AND ? != '')) 
+                      AND tchr.BR_TCHR_ASSIGNED_CLASS_ID IS NOT NULL AND tchr.BR_TCHR_ASSIGNED_CLASS_ID != ''
+                    UNION
+                    SELECT sub.BR_CLS_ID 
+                    FROM SCHL_TCHR_SUB ts
+                    JOIN SCHL_BR_CLS_SUBJECT sub ON ts.TCHR_SUB_ID = sub.BR_CLS_SUB_ID
+                    JOIN SCHL_BR_TCHR tchr ON ts.TCHR_ID = tchr.BR_TCHR_ID
+                    WHERE (tchr.BR_TCHR_ID = ? OR (tchr.BR_TCHR_EMAI_ID = ? AND ? != ''))
+                    UNION
+                    SELECT DISTINCT COALESCE(sess.SCHL_BR_CLASS_SEC_SESS_CLASS, sch.SCHL_CLS_SCHLDL_SEC_SESS_ID)
+                    FROM SCHL_CLS_SCHLDL sch
+                    LEFT JOIN SCHL_BR_CLASS_SEC_SESSION sess ON sch.SCHL_CLS_SCHLDL_SEC_SESS_ID = sess.SCHL_BR_CLASS_SEC_SESS_ID
+                    JOIN SCHL_BR_TCHR tchr ON sch.SCHL_BR_TCHR_ID = tchr.BR_TCHR_ID
+                    WHERE (tchr.BR_TCHR_ID = ? OR (tchr.BR_TCHR_EMAI_ID = ? AND ? != ''))
+                )";
+                $params[] = $userId; $params[] = $userEmail; $params[] = $userEmail;
+                $params[] = $userId; $params[] = $userEmail; $params[] = $userEmail;
+                $params[] = $userId; $params[] = $userEmail; $params[] = $userEmail;
             }
         }
         $sql .= " ORDER BY c.SCHL_BR_CLASS_NM ASC";
@@ -87,6 +110,29 @@ class ClassModel {
             } elseif ($roleId === 'R_BRANCHADMIN' || $roleId === 'R_BRANCHEXECUTIVE' || $roleId === 'R_BRANCHOFFICIAL') {
                 $sql .= " AND c.SCHL_BR_CENT_ID = ?";
                 $params[] = $userId;
+            } elseif ($roleId === 'R_TEACHER' || $roleId === 'TEACHER' || strpos($roleId, 'TEACHER') !== false) {
+                $userEmail = $user['email'] ?? $user['user_email_id'] ?? '';
+                $sql .= " AND c.SCHL_BR_CLS_ID IN (
+                    SELECT tchr.BR_TCHR_ASSIGNED_CLASS_ID 
+                    FROM SCHL_BR_TCHR tchr 
+                    WHERE (tchr.BR_TCHR_ID = ? OR (tchr.BR_TCHR_EMAI_ID = ? AND ? != '')) 
+                      AND tchr.BR_TCHR_ASSIGNED_CLASS_ID IS NOT NULL AND tchr.BR_TCHR_ASSIGNED_CLASS_ID != ''
+                    UNION
+                    SELECT sub.BR_CLS_ID 
+                    FROM SCHL_TCHR_SUB ts
+                    JOIN SCHL_BR_CLS_SUBJECT sub ON ts.TCHR_SUB_ID = sub.BR_CLS_SUB_ID
+                    JOIN SCHL_BR_TCHR tchr ON ts.TCHR_ID = tchr.BR_TCHR_ID
+                    WHERE (tchr.BR_TCHR_ID = ? OR (tchr.BR_TCHR_EMAI_ID = ? AND ? != ''))
+                    UNION
+                    SELECT DISTINCT COALESCE(sess.SCHL_BR_CLASS_SEC_SESS_CLASS, sch.SCHL_CLS_SCHLDL_SEC_SESS_ID)
+                    FROM SCHL_CLS_SCHLDL sch
+                    LEFT JOIN SCHL_BR_CLASS_SEC_SESSION sess ON sch.SCHL_CLS_SCHLDL_SEC_SESS_ID = sess.SCHL_BR_CLASS_SEC_SESS_ID
+                    JOIN SCHL_BR_TCHR tchr ON sch.SCHL_BR_TCHR_ID = tchr.BR_TCHR_ID
+                    WHERE (tchr.BR_TCHR_ID = ? OR (tchr.BR_TCHR_EMAI_ID = ? AND ? != ''))
+                )";
+                $params[] = $userId; $params[] = $userEmail; $params[] = $userEmail;
+                $params[] = $userId; $params[] = $userEmail; $params[] = $userEmail;
+                $params[] = $userId; $params[] = $userEmail; $params[] = $userEmail;
             }
         }
         $stmt = $this->db->prepare($sql);

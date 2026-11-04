@@ -45,6 +45,7 @@ export default function Classes() {
   const currentUser = JSON.parse(sessionStorage.getItem('e_school_user') || '{}')
   const userRole = (currentUser.user_role || currentUser.role_id || currentUser.role || '').toLowerCase()
   const isBranchAdmin = userRole.includes('branch') && !userRole.includes('super')
+  const isTeacher = userRole.includes('teacher')
 
   const [formData, setFormData] = useState({
     SCHL_BR_CLS_ID: '',
@@ -130,6 +131,7 @@ export default function Classes() {
   }
 
   function openModal(cls = null) {
+    if (isTeacher) return
     setErrors({})
     setIsCustomClass(!!cls && !!cls.name && !STANDARD_CLASSES.includes(cls.name))
     const defaultBranchId = isBranchAdmin 
@@ -208,10 +210,12 @@ export default function Classes() {
     <motion.div className="animate-fade-in" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Classes</h1>
-          <p className="page-subtitle">{loading ? 'Loading...' : `${classesList.length} classes configured`}</p>
+          <h1 className="page-title">{isTeacher ? 'My Classes' : 'Classes'}</h1>
+          <p className="page-subtitle">{loading ? 'Loading...' : `${classesList.length} ${isTeacher ? 'classes assigned' : 'classes configured'}`}</p>
         </div>
-        <button id="add-class-btn" className="btn-primary" onClick={() => openModal()}><FaPlus /> Add Class</button>
+        {!isTeacher && (
+          <button id="add-class-btn" className="btn-primary" onClick={() => openModal()}><FaPlus /> Add Class</button>
+        )}
       </div>
 
       {/* Search + Table */}
@@ -242,7 +246,7 @@ export default function Classes() {
                 {!isBranchAdmin && <th scope="col">Branch</th>}
                 <th scope="col">Students</th>
                 <th scope="col">Status</th>
-                <th scope="col">Actions</th>
+                {!isTeacher && <th scope="col">Actions</th>}
               </tr>
             </thead>
             <tbody>
@@ -292,18 +296,20 @@ export default function Classes() {
                         {cls.status}
                       </span>
                     </td>
-                    <td>
-                      <div className="flex gap-sm">
-                        <button className="btn-icon" aria-label={`Edit ${cls.name}`} title="Edit" onClick={() => openModal(cls)}><FaEdit /></button>
-                        <button className="btn-icon text-danger" aria-label={`Delete ${cls.name}`} title="Delete" onClick={() => handleDelete(cls.id)}><FaTrash /></button>
-                      </div>
-                    </td>
+                    {!isTeacher && (
+                      <td>
+                        <div className="flex gap-sm">
+                          <button className="btn-icon" aria-label={`Edit ${cls.name}`} title="Edit" onClick={() => openModal(cls)}><FaEdit /></button>
+                          <button className="btn-icon text-danger" aria-label={`Delete ${cls.name}`} title="Delete" onClick={() => handleDelete(cls.id)}><FaTrash /></button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 )
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={isBranchAdmin ? 7 : 8} style={{ textAlign: 'center', padding: '32px', color: 'var(--clr-text-muted)' }}>
+                  <td colSpan={(isBranchAdmin ? 6 : 7) + (!isTeacher ? 1 : 0)} style={{ textAlign: 'center', padding: '32px', color: 'var(--clr-text-muted)' }}>
                     {loading ? 'Loading classes...' : 'No classes match your search.'}
                   </td>
                 </tr>

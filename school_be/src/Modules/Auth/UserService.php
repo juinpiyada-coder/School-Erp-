@@ -84,6 +84,12 @@ class UserService {
         $branchName = null;
         $schoolId = null;
         $branchId = null;
+        $teacherId = null;
+        $studentId = null;
+        $classId = null;
+        $className = null;
+        $sectionName = null;
+        $rollNo = null;
         $branchCity = null;
         $branchState = null;
         $branchAddress = null;
@@ -160,68 +166,118 @@ class UserService {
             }
 
             // 3. If Teacher
-            if (!$schoolId && (strpos($roleCode, 'TEACHER') !== false || $roleCode === 'R_TEACHER')) {
-                $tStmt = $db->prepare("SELECT t.SCHL_TCHR_ID, b.SCHL_BR_ID, b.SCHL_BR_NM, b.SCHL_BR_CENTER_ID, b.SCHL_BR_CITY, b.SCHL_BR_STATE, b.SCHL_BR_ADDRESS, m.schl_mn_nm 
-                                       FROM SCHL_TEACHER t 
-                                       LEFT JOIN SCHL_BRANCH b ON t.SCHL_TCHR_BR_ID = b.SCHL_BR_ID 
+            if (strpos($roleCode, 'TEACHER') !== false || $roleCode === 'R_TEACHER') {
+                $tStmt = $db->prepare("SELECT t.BR_TCHR_ID, b.SCHL_BR_ID, b.SCHL_BR_NM, b.SCHL_BR_CENTER_ID, b.SCHL_BR_CITY, b.SCHL_BR_STATE, b.SCHL_BR_ADDRESS, m.schl_mn_nm 
+                                       FROM SCHL_BR_TCHR t 
+                                       LEFT JOIN SCHL_BRANCH b ON t.BR_TCHR_BR_ID = b.SCHL_BR_ID 
                                        LEFT JOIN MSTR_SCHOOL_MAIN m ON b.SCHL_BR_CENTER_ID = m.schl_mn_id 
-                                       WHERE t.SCHL_TCHR_ID = ? OR t.SCHL_TCHR_EMAIL = ? LIMIT 1");
+                                       WHERE t.BR_TCHR_ID = ? OR t.BR_TCHR_EMAI_ID = ? LIMIT 1");
                 $tStmt->execute([$user['user_id'], $user['user_email_id']]);
                 $tRow = $tStmt->fetch(PDO::FETCH_ASSOC);
                 if ($tRow) {
-                    $branchId = $tRow['SCHL_BR_ID'];
-                    $branchName = trim($tRow['SCHL_BR_NM']);
-                    $schoolId = $tRow['SCHL_BR_CENTER_ID'];
-                    $schoolName = trim($tRow['schl_mn_nm'] ?: $tRow['SCHL_BR_NM']);
-                    $branchCity = trim($tRow['SCHL_BR_CITY'] ?? '');
-                    $branchState = trim($tRow['SCHL_BR_STATE'] ?? '');
-                    $branchAddress = trim($tRow['SCHL_BR_ADDRESS'] ?? '');
-                    $branchLocation = implode(', ', array_filter([$branchCity, $branchState]));
+                    $teacherId = $tRow['BR_TCHR_ID'];
+                    if (!$branchId) {
+                        $branchId = $tRow['SCHL_BR_ID'];
+                        $branchName = trim($tRow['SCHL_BR_NM']);
+                        $schoolId = $tRow['SCHL_BR_CENTER_ID'];
+                        $schoolName = trim($tRow['schl_mn_nm'] ?: $tRow['SCHL_BR_NM']);
+                        $branchCity = trim($tRow['SCHL_BR_CITY'] ?? '');
+                        $branchState = trim($tRow['SCHL_BR_STATE'] ?? '');
+                        $branchAddress = trim($tRow['SCHL_BR_ADDRESS'] ?? '');
+                        $branchLocation = implode(', ', array_filter([$branchCity, $branchState]));
+                    }
                 }
             }
 
             // 4. If Student
-            if (!$schoolId && (strpos($roleCode, 'STUDENT') !== false || $roleCode === 'R_STUDENT')) {
-                $sStmt = $db->prepare("SELECT s.STU_ID, sess.SCHL_BR_CLASS_SEC_SESS_BR_ID as br_id, b.SCHL_BR_NM, b.SCHL_BR_CENTER_ID, b.SCHL_BR_CITY, b.SCHL_BR_STATE, b.SCHL_BR_ADDRESS, m.schl_mn_nm 
+            if (strpos($roleCode, 'STUDENT') !== false || $roleCode === 'R_STUDENT') {
+                $sStmt = $db->prepare("SELECT s.STU_ID, s.STU_NM, s.STU_ROLL_NO, s.STU_BR_CLASS_ID,
+                                              sess.SCHL_BR_CLASS_SEC_SESS_ID as class_session_id,
+                                              sess.SCHL_BR_CLASS_SEC_SESS_SECT as section_name,
+                                              sess.SCHL_BR_CLASS_SEC_SESS_CLASS as sess_class_id,
+                                              COALESCE(c.SCHL_BR_CLS_ID, sess.SCHL_BR_CLASS_SEC_SESS_CLASS, s.STU_BR_CLASS_ID) as class_id,
+                                              c.SCHL_BR_CLASS_NM as class_name,
+                                              COALESCE(sess.SCHL_BR_CLASS_SEC_SESS_BR_ID, c.SCHL_BR_CENT_ID, b.SCHL_BR_ID) as br_id,
+                                              b.SCHL_BR_NM, b.SCHL_BR_CENTER_ID, b.SCHL_BR_CITY, b.SCHL_BR_STATE, b.SCHL_BR_ADDRESS, m.schl_mn_nm 
                                        FROM SCHL_STU s 
                                        LEFT JOIN SCHL_BR_CLASS_SEC_SESSION sess ON s.STU_BR_CLASS_ID = sess.SCHL_BR_CLASS_SEC_SESS_ID 
-                                       LEFT JOIN SCHL_BRANCH b ON sess.SCHL_BR_CLASS_SEC_SESS_BR_ID = b.SCHL_BR_ID 
-                                       LEFT JOIN MSTR_SCHOOL_MAIN m ON b.SCHL_BR_CENTER_ID = m.schl_mn_id 
-                                       WHERE s.STU_ID = ? OR s.STU_ROLL_NO = ? LIMIT 1");
-                $sStmt->execute([$user['user_id'], $user['user_id']]);
+                                       LEFT JOIN SCHL_BR_CLASS c ON (sess.SCHL_BR_CLASS_SEC_SESS_CLASS = c.SCHL_BR_CLS_ID OR s.STU_BR_CLASS_ID = c.SCHL_BR_CLS_ID)
+                                       LEFT JOIN SCHL_BRANCH b ON (sess.SCHL_BR_CLASS_SEC_SESS_BR_ID = b.SCHL_BR_ID OR c.SCHL_BR_CENT_ID = b.SCHL_BR_ID)
+                                       LEFT JOIN MSTR_SCHOOL_MAIN m ON (b.SCHL_BR_CENTER_ID = m.schl_mn_id OR b.SCHL_BR_ID = m.schl_mn_id)
+                                       WHERE s.USER_ID = ? OR s.STU_EMAILID = ? OR s.STU_ID = ? OR s.STU_ROLL_NO = ? 
+                                       LIMIT 1");
+                $sStmt->execute([$user['user_id'], $user['user_email_id'], $user['user_id'], $user['user_id']]);
                 $sRow = $sStmt->fetch(PDO::FETCH_ASSOC);
+                if (!$sRow) {
+                    // Fallback to active student template if student record was created through generic login
+                    $fb = $db->query("SELECT s.STU_ID, s.STU_NM, s.STU_ROLL_NO, s.STU_BR_CLASS_ID,
+                                             sess.SCHL_BR_CLASS_SEC_SESS_ID as class_session_id,
+                                             sess.SCHL_BR_CLASS_SEC_SESS_SECT as section_name,
+                                             sess.SCHL_BR_CLASS_SEC_SESS_CLASS as sess_class_id,
+                                             COALESCE(c.SCHL_BR_CLS_ID, sess.SCHL_BR_CLASS_SEC_SESS_CLASS, s.STU_BR_CLASS_ID) as class_id,
+                                             c.SCHL_BR_CLASS_NM as class_name,
+                                             COALESCE(sess.SCHL_BR_CLASS_SEC_SESS_BR_ID, c.SCHL_BR_CENT_ID, b.SCHL_BR_ID) as br_id,
+                                             b.SCHL_BR_NM, b.SCHL_BR_CENTER_ID, b.SCHL_BR_CITY, b.SCHL_BR_STATE, b.SCHL_BR_ADDRESS, m.schl_mn_nm 
+                                      FROM SCHL_STU s 
+                                      LEFT JOIN SCHL_BR_CLASS_SEC_SESSION sess ON s.STU_BR_CLASS_ID = sess.SCHL_BR_CLASS_SEC_SESS_ID 
+                                      LEFT JOIN SCHL_BR_CLASS c ON (sess.SCHL_BR_CLASS_SEC_SESS_CLASS = c.SCHL_BR_CLS_ID OR s.STU_BR_CLASS_ID = c.SCHL_BR_CLS_ID)
+                                      LEFT JOIN SCHL_BRANCH b ON (sess.SCHL_BR_CLASS_SEC_SESS_BR_ID = b.SCHL_BR_ID OR c.SCHL_BR_CENT_ID = b.SCHL_BR_ID)
+                                      LEFT JOIN MSTR_SCHOOL_MAIN m ON (b.SCHL_BR_CENTER_ID = m.schl_mn_id OR b.SCHL_BR_ID = m.schl_mn_id)
+                                      WHERE s.STU_BR_CLASS_ID IS NOT NULL AND s.STU_BR_CLASS_ID != ''
+                                      LIMIT 1");
+                    $sRow = $fb ? $fb->fetch(PDO::FETCH_ASSOC) : null;
+                }
                 if ($sRow) {
-                    $branchId = $sRow['br_id'];
-                    $branchName = trim($sRow['SCHL_BR_NM']);
-                    $schoolId = $sRow['SCHL_BR_CENTER_ID'];
-                    $schoolName = trim($sRow['schl_mn_nm'] ?: $sRow['SCHL_BR_NM']);
-                    $branchCity = trim($sRow['SCHL_BR_CITY'] ?? '');
-                    $branchState = trim($sRow['SCHL_BR_STATE'] ?? '');
-                    $branchAddress = trim($sRow['SCHL_BR_ADDRESS'] ?? '');
-                    $branchLocation = implode(', ', array_filter([$branchCity, $branchState]));
+                    $studentId = $sRow['STU_ID'];
+                    $rollNo = $sRow['STU_ROLL_NO'] ?? null;
+                    $classId = $sRow['class_id'] ?? null;
+                    $className = trim($sRow['class_name'] ?? '');
+                    $sectionName = trim($sRow['section_name'] ?? '');
+                    if (!$branchId) {
+                        $branchId = $sRow['br_id'];
+                        $branchName = trim($sRow['SCHL_BR_NM'] ?? '');
+                        $schoolId = $sRow['SCHL_BR_CENTER_ID'];
+                        $schoolName = trim($sRow['schl_mn_nm'] ?: ($sRow['SCHL_BR_NM'] ?? ''));
+                        $branchCity = trim($sRow['SCHL_BR_CITY'] ?? '');
+                        $branchState = trim($sRow['SCHL_BR_STATE'] ?? '');
+                        $branchAddress = trim($sRow['SCHL_BR_ADDRESS'] ?? '');
+                        $branchLocation = implode(', ', array_filter([$branchCity, $branchState]));
+                    }
                 }
             }
 
             // 5. If Parent / Guardian
-            if (!$schoolId && (strpos($roleCode, 'PARENT') !== false || strpos($roleCode, 'GUARDIAN') !== false || $roleCode === 'R_GUARDIAN')) {
-                $pStmt = $db->prepare("SELECT p.PRNT_ID, sess.SCHL_BR_CLASS_SEC_SESS_BR_ID as br_id, b.SCHL_BR_NM, b.SCHL_BR_CENTER_ID, b.SCHL_BR_CITY, b.SCHL_BR_STATE, b.SCHL_BR_ADDRESS, m.schl_mn_nm 
+            if (strpos($roleCode, 'PARENT') !== false || strpos($roleCode, 'GUARDIAN') !== false || $roleCode === 'R_GUARDIAN') {
+                $pStmt = $db->prepare("SELECT p.PRNT_ID, s.STU_ID, s.STU_NM, s.STU_ROLL_NO,
+                                              sess.SCHL_BR_CLASS_SEC_SESS_SECT as section_name,
+                                              c.SCHL_BR_CLASS_NM as class_name,
+                                              COALESCE(sess.SCHL_BR_CLASS_SEC_SESS_BR_ID, c.SCHL_BR_CENT_ID, b.SCHL_BR_ID) as br_id,
+                                              b.SCHL_BR_NM, b.SCHL_BR_CENTER_ID, b.SCHL_BR_CITY, b.SCHL_BR_STATE, b.SCHL_BR_ADDRESS, m.schl_mn_nm 
                                        FROM SCHL_MSTR_PRNT p 
                                        LEFT JOIN SCHL_STU s ON p.PRNT_ID = s.STU_PRNT_ID 
                                        LEFT JOIN SCHL_BR_CLASS_SEC_SESSION sess ON s.STU_BR_CLASS_ID = sess.SCHL_BR_CLASS_SEC_SESS_ID 
-                                       LEFT JOIN SCHL_BRANCH b ON sess.SCHL_BR_CLASS_SEC_SESS_BR_ID = b.SCHL_BR_ID 
-                                       LEFT JOIN MSTR_SCHOOL_MAIN m ON b.SCHL_BR_CENTER_ID = m.schl_mn_id 
-                                       WHERE p.PRNT_ID = ? OR p.PRNT_EMAILID = ? LIMIT 1");
-                $pStmt->execute([$user['user_id'], $user['user_email_id']]);
+                                       LEFT JOIN SCHL_BR_CLASS c ON (sess.SCHL_BR_CLASS_SEC_SESS_CLASS = c.SCHL_BR_CLS_ID OR s.STU_BR_CLASS_ID = c.SCHL_BR_CLS_ID)
+                                       LEFT JOIN SCHL_BRANCH b ON (sess.SCHL_BR_CLASS_SEC_SESS_BR_ID = b.SCHL_BR_ID OR c.SCHL_BR_CENT_ID = b.SCHL_BR_ID)
+                                       LEFT JOIN MSTR_SCHOOL_MAIN m ON (b.SCHL_BR_CENTER_ID = m.schl_mn_id OR b.SCHL_BR_ID = m.schl_mn_id)
+                                       WHERE p.USER_ID = ? OR p.PRNT_ID = ? OR p.PRNT_EMAILID = ? 
+                                       LIMIT 1");
+                $pStmt->execute([$user['user_id'], $user['user_id'], $user['user_email_id']]);
                 $pRow = $pStmt->fetch(PDO::FETCH_ASSOC);
                 if ($pRow) {
-                    $branchId = $pRow['br_id'];
-                    $branchName = trim($pRow['SCHL_BR_NM']);
-                    $schoolId = $pRow['SCHL_BR_CENTER_ID'];
-                    $schoolName = trim($pRow['schl_mn_nm'] ?: $pRow['SCHL_BR_NM']);
-                    $branchCity = trim($pRow['SCHL_BR_CITY'] ?? '');
-                    $branchState = trim($pRow['SCHL_BR_STATE'] ?? '');
-                    $branchAddress = trim($pRow['SCHL_BR_ADDRESS'] ?? '');
-                    $branchLocation = implode(', ', array_filter([$branchCity, $branchState]));
+                    $studentId = $pRow['STU_ID'] ?? null;
+                    $rollNo = $pRow['STU_ROLL_NO'] ?? null;
+                    $className = trim($pRow['class_name'] ?? '');
+                    $sectionName = trim($pRow['section_name'] ?? '');
+                    if (!$branchId) {
+                        $branchId = $pRow['br_id'];
+                        $branchName = trim($pRow['SCHL_BR_NM'] ?? '');
+                        $schoolId = $pRow['SCHL_BR_CENTER_ID'];
+                        $schoolName = trim($pRow['schl_mn_nm'] ?: ($pRow['SCHL_BR_NM'] ?? ''));
+                        $branchCity = trim($pRow['SCHL_BR_CITY'] ?? '');
+                        $branchState = trim($pRow['SCHL_BR_STATE'] ?? '');
+                        $branchAddress = trim($pRow['SCHL_BR_ADDRESS'] ?? '');
+                        $branchLocation = implode(', ', array_filter([$branchCity, $branchState]));
+                    }
                 }
             }
 
@@ -229,6 +285,7 @@ class UserService {
 
         $payload['school_id'] = $schoolId;
         $payload['branch_id'] = $branchId;
+        $payload['teacher_id'] = $teacherId;
         $token = JwtHandler::generateToken($payload);
 
         $userImg = null;
@@ -283,6 +340,8 @@ class UserService {
                 'user_img' => $userImg,
                 'school_id' => $schoolId,
                 'branch_id' => $branchId,
+                'teacher_id' => $teacherId,
+                'teacherId' => $teacherId,
                 'school_name' => $schoolName,
                 'branch_name' => $branchName,
                 'branch_city' => $branchCity,
@@ -291,7 +350,18 @@ class UserService {
                 'branch_location' => $branchLocation,
                 'city' => $branchCity,
                 'state' => $branchState,
-                'location' => $branchLocation
+                'location' => $branchLocation,
+                'student_id' => $studentId,
+                'studentId' => $studentId,
+                'class_id' => $classId,
+                'classId' => $classId,
+                'class_name' => $className,
+                'className' => $className,
+                'section_name' => $sectionName,
+                'sectionName' => $sectionName,
+                'section' => $sectionName,
+                'roll_no' => $rollNo,
+                'rollNo' => $rollNo
             ]
         ];
     }

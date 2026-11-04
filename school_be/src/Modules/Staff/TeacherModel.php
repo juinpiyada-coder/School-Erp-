@@ -70,6 +70,12 @@ class TeacherModel {
             } elseif ($roleId === 'R_BRANCHADMIN' || $roleId === 'R_BRANCHEXECUTIVE' || $roleId === 'R_BRANCHOFFICIAL') {
                 $sql .= " AND t.BR_TCHR_BR_ID = ?";
                 $params[] = $userId;
+            } elseif ($roleId === 'R_TEACHER' || $roleId === 'TEACHER' || strpos($roleId, 'TEACHER') !== false) {
+                $userEmail = $user['email'] ?? $user['user_email_id'] ?? '';
+                $sql .= " AND (t.BR_TCHR_ID = ? OR (t.BR_TCHR_EMAI_ID = ? AND ? != ''))";
+                $params[] = $userId;
+                $params[] = $userEmail;
+                $params[] = $userEmail;
             }
         }
         
@@ -95,6 +101,12 @@ class TeacherModel {
             } elseif ($roleId === 'R_BRANCHADMIN' || $roleId === 'R_BRANCHEXECUTIVE' || $roleId === 'R_BRANCHOFFICIAL') {
                 $sql .= " AND t.BR_TCHR_BR_ID = ?";
                 $params[] = $userId;
+            } elseif ($roleId === 'R_TEACHER' || $roleId === 'TEACHER' || strpos($roleId, 'TEACHER') !== false) {
+                $userEmail = $user['email'] ?? $user['user_email_id'] ?? '';
+                $sql .= " AND (t.BR_TCHR_ID = ? OR (t.BR_TCHR_EMAI_ID = ? AND ? != ''))";
+                $params[] = $userId;
+                $params[] = $userEmail;
+                $params[] = $userEmail;
             }
         }
         $stmt = $this->db->prepare($sql);

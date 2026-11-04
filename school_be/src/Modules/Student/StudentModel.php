@@ -67,18 +67,43 @@ class StudentModel {
         
         $params = [];
         if ($user) {
-            if ($user['role_id'] === 'R_SCHOOLADMIN') {
+            $userRole = strtoupper($user['role_id'] ?? $user['user_role'] ?? '');
+            if ($userRole === 'R_SCHOOLADMIN') {
                 $centerId = $user['userId'];
                 $sql .= " AND (b.SCHL_BR_CENTER_ID = ? OR ? IN ('usr_school', 'usr_super') OR s.STU_CREATEDBY = ?)";
                 $params[] = $centerId;
                 $params[] = $centerId;
                 $params[] = $centerId;
-            } elseif ($user['role_id'] === 'R_BRANCHADMIN') {
+            } elseif ($userRole === 'R_BRANCHADMIN') {
                 $branchId = $user['userId'];
                 $sql .= " AND (sess.SCHL_BR_CLASS_SEC_SESS_BR_ID = ? OR ? IN ('usr_branch', 'usr_super') OR s.STU_CREATEDBY = ?)";
                 $params[] = $branchId;
                 $params[] = $branchId;
                 $params[] = $branchId;
+            } elseif ($userRole === 'R_TEACHER' || $userRole === 'TEACHER' || strpos($userRole, 'TEACHER') !== false) {
+                $userId = $user['userId'] ?? $user['user_id'] ?? '';
+                $userEmail = $user['email'] ?? $user['user_email_id'] ?? '';
+                $sql .= " AND COALESCE(c.SCHL_BR_CLS_ID, sess.SCHL_BR_CLASS_SEC_SESS_CLASS, s.STU_BR_CLASS_ID) IN (
+                    SELECT tchr.BR_TCHR_ASSIGNED_CLASS_ID 
+                    FROM SCHL_BR_TCHR tchr 
+                    WHERE (tchr.BR_TCHR_ID = ? OR (tchr.BR_TCHR_EMAI_ID = ? AND ? != '')) 
+                      AND tchr.BR_TCHR_ASSIGNED_CLASS_ID IS NOT NULL AND tchr.BR_TCHR_ASSIGNED_CLASS_ID != ''
+                    UNION
+                    SELECT sub.BR_CLS_ID 
+                    FROM SCHL_TCHR_SUB ts
+                    JOIN SCHL_BR_CLS_SUBJECT sub ON ts.TCHR_SUB_ID = sub.BR_CLS_SUB_ID
+                    JOIN SCHL_BR_TCHR tchr ON ts.TCHR_ID = tchr.BR_TCHR_ID
+                    WHERE (tchr.BR_TCHR_ID = ? OR (tchr.BR_TCHR_EMAI_ID = ? AND ? != ''))
+                    UNION
+                    SELECT DISTINCT COALESCE(ss.SCHL_BR_CLASS_SEC_SESS_CLASS, sch.SCHL_CLS_SCHLDL_SEC_SESS_ID)
+                    FROM SCHL_CLS_SCHLDL sch
+                    LEFT JOIN SCHL_BR_CLASS_SEC_SESSION ss ON sch.SCHL_CLS_SCHLDL_SEC_SESS_ID = ss.SCHL_BR_CLASS_SEC_SESS_ID
+                    JOIN SCHL_BR_TCHR tchr ON sch.SCHL_BR_TCHR_ID = tchr.BR_TCHR_ID
+                    WHERE (tchr.BR_TCHR_ID = ? OR (tchr.BR_TCHR_EMAI_ID = ? AND ? != ''))
+                )";
+                $params[] = $userId; $params[] = $userEmail; $params[] = $userEmail;
+                $params[] = $userId; $params[] = $userEmail; $params[] = $userEmail;
+                $params[] = $userId; $params[] = $userEmail; $params[] = $userEmail;
             }
         }
 
@@ -110,23 +135,49 @@ class StudentModel {
         $sql = "
             SELECT COUNT(*) FROM {$this->tableName} s
             LEFT JOIN SCHL_BR_CLASS_SEC_SESSION sess ON s.STU_BR_CLASS_ID = sess.SCHL_BR_CLASS_SEC_SESS_ID
+            LEFT JOIN SCHL_BR_CLASS c ON (sess.SCHL_BR_CLASS_SEC_SESS_CLASS = c.SCHL_BR_CLS_ID OR s.STU_BR_CLASS_ID = c.SCHL_BR_CLS_ID)
             LEFT JOIN SCHL_BRANCH b ON sess.SCHL_BR_CLASS_SEC_SESS_BR_ID = b.SCHL_BR_ID
             WHERE 1=1
         ";
         $params = [];
         if ($user) {
-            if ($user['role_id'] === 'R_SCHOOLADMIN') {
+            $userRole = strtoupper($user['role_id'] ?? $user['user_role'] ?? '');
+            if ($userRole === 'R_SCHOOLADMIN') {
                 $centerId = $user['userId'];
                 $sql .= " AND (b.SCHL_BR_CENTER_ID = ? OR ? IN ('usr_school', 'usr_super') OR s.STU_CREATEDBY = ?)";
                 $params[] = $centerId;
                 $params[] = $centerId;
                 $params[] = $centerId;
-            } elseif ($user['role_id'] === 'R_BRANCHADMIN') {
+            } elseif ($userRole === 'R_BRANCHADMIN') {
                 $branchId = $user['userId'];
                 $sql .= " AND (sess.SCHL_BR_CLASS_SEC_SESS_BR_ID = ? OR ? IN ('usr_branch', 'usr_super') OR s.STU_CREATEDBY = ?)";
                 $params[] = $branchId;
                 $params[] = $branchId;
                 $params[] = $branchId;
+            } elseif ($userRole === 'R_TEACHER' || $userRole === 'TEACHER' || strpos($userRole, 'TEACHER') !== false) {
+                $userId = $user['userId'] ?? $user['user_id'] ?? '';
+                $userEmail = $user['email'] ?? $user['user_email_id'] ?? '';
+                $sql .= " AND COALESCE(c.SCHL_BR_CLS_ID, sess.SCHL_BR_CLASS_SEC_SESS_CLASS, s.STU_BR_CLASS_ID) IN (
+                    SELECT tchr.BR_TCHR_ASSIGNED_CLASS_ID 
+                    FROM SCHL_BR_TCHR tchr 
+                    WHERE (tchr.BR_TCHR_ID = ? OR (tchr.BR_TCHR_EMAI_ID = ? AND ? != '')) 
+                      AND tchr.BR_TCHR_ASSIGNED_CLASS_ID IS NOT NULL AND tchr.BR_TCHR_ASSIGNED_CLASS_ID != ''
+                    UNION
+                    SELECT sub.BR_CLS_ID 
+                    FROM SCHL_TCHR_SUB ts
+                    JOIN SCHL_BR_CLS_SUBJECT sub ON ts.TCHR_SUB_ID = sub.BR_CLS_SUB_ID
+                    JOIN SCHL_BR_TCHR tchr ON ts.TCHR_ID = tchr.BR_TCHR_ID
+                    WHERE (tchr.BR_TCHR_ID = ? OR (tchr.BR_TCHR_EMAI_ID = ? AND ? != ''))
+                    UNION
+                    SELECT DISTINCT COALESCE(ss.SCHL_BR_CLASS_SEC_SESS_CLASS, sch.SCHL_CLS_SCHLDL_SEC_SESS_ID)
+                    FROM SCHL_CLS_SCHLDL sch
+                    LEFT JOIN SCHL_BR_CLASS_SEC_SESSION ss ON sch.SCHL_CLS_SCHLDL_SEC_SESS_ID = ss.SCHL_BR_CLASS_SEC_SESS_ID
+                    JOIN SCHL_BR_TCHR tchr ON sch.SCHL_BR_TCHR_ID = tchr.BR_TCHR_ID
+                    WHERE (tchr.BR_TCHR_ID = ? OR (tchr.BR_TCHR_EMAI_ID = ? AND ? != ''))
+                )";
+                $params[] = $userId; $params[] = $userEmail; $params[] = $userEmail;
+                $params[] = $userId; $params[] = $userEmail; $params[] = $userEmail;
+                $params[] = $userId; $params[] = $userEmail; $params[] = $userEmail;
             }
         }
         $stmt = $this->db->prepare($sql);

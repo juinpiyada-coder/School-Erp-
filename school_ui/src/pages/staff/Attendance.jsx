@@ -228,6 +228,8 @@ export default function Attendance() {
   const user = JSON.parse(sessionStorage.getItem('e_school_user') || '{}')
   const userRole = (user?.user_role || user?.role_id || user?.role || '').toUpperCase()
   const isBranchAdmin = userRole === 'R_BRANCHADMIN' || userRole.includes('BRANCH') || userRole === 'R_SUPERADMIN'
+  const isTeacher = userRole === 'R_TEACHER' || userRole.includes('TEACHER')
+  const currentTeacherId = user?.teacher_id || user?.teacherId || user?.id || user?.user_id
 
   const TODAY_LABEL = new Date().toLocaleDateString('en-US', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
@@ -241,6 +243,7 @@ export default function Attendance() {
     try {
       const params = { date: dateFilter }
       if (statusFilter !== 'All')           params.status     = statusFilter
+      if (isTeacher && currentTeacherId)    params.teacherId  = currentTeacherId
 
       const { data } = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/staff/attendance`, { params: params })
       setLogs(Array.isArray(data) ? data : data?.data ?? [])
@@ -250,7 +253,7 @@ export default function Attendance() {
     } finally {
       setLoading(false)
     }
-  }, [dateFilter, statusFilter])
+  }, [dateFilter, statusFilter, isTeacher, currentTeacherId])
 
   useEffect(() => { loadLogs() }, [loadLogs])
 
@@ -317,7 +320,7 @@ export default function Attendance() {
       {/* ── Page Header ── */}
       <div className="page-header">
         <div>
-          <h1 className="page-title">Staff Attendance</h1>
+          <h1 className="page-title">{isTeacher ? 'My Attendance & Leave' : 'Staff Attendance'}</h1>
           <p className="page-subtitle">{TODAY_LABEL}</p>
         </div>
         <div className="flex gap-md" style={{ flexWrap: 'wrap', alignItems: 'center' }}>

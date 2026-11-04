@@ -47,18 +47,8 @@ class DashboardController {
                     } catch (Exception $e) {}
                 }
                 // We don't overwrite $branchId because they might have selected a specific branch
-            } elseif ($roleId === 'R_TEACHER') {
-                // Teachers were previously falling through to the network-wide overview below,
-                // leaking every branch's totals. Scope them to their own branch instead.
-                $tStmt = $this->db->prepare("SELECT BR_TCHR_BR_ID FROM SCHL_BR_TCHR WHERE BR_TCHR_EMAI_ID = ? LIMIT 1");
-                $tStmt->execute([$userEmail]);
-                $tchrBranchId = $tStmt->fetchColumn();
-                if ($tchrBranchId) {
-                    $branchId = $tchrBranchId;
-                } else {
-                    // No teacher record matched yet (unconfigured account) - show empty state, not global data
-                    $scoped = $this->emptyScope();
-                }
+            } elseif ($roleId === 'R_TEACHER' || $roleId === 'TEACHER' || strpos($roleId, 'TEACHER') !== false) {
+                $scoped = $this->getTeacherScope($userEmail, $user['userId'] ?? $user['user_id'] ?? null);
             } elseif ($roleId === 'R_STUDENT') {
                 $scoped = $this->getStudentScope($userEmail);
             } elseif ($roleId === 'R_GUARDIAN' || $roleId === 'R_PARENT') {
@@ -251,6 +241,82 @@ class DashboardController {
             'unreadMessages' => 0,
             'attendanceRecords' => [],
             'branchId' => $branchId,
+        ];
+    }
+
+    private function getTeacherScope($email, $userId = null) {
+        $tStmt = $this->db->prepare("SELECT BR_TCHR_ID, BR_TCHR_BR_ID, BR_TCHR_ASSIGNED_CLASS_ID FROM SCHL_BR_TCHR WHERE BR_TCHR_ID = ? OR BR_TCHR_EMAI_ID = ? LIMIT 1");
+        $tStmt->execute([$userId ?: $email, $email]);
+        $tchr = $tStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$tchr) {
+            return $this->emptyScope();
+        }
+
+        $tchrId = $tchr['BR_TCHR_ID'];
+        $branchId = $tchr['BR_TCHR_BR_ID'];
+
+        // Get all distinct class IDs taught by this teacher
+        $clsStmt = $this->db->prepare("
+            SELECT DISTINCT class_id FROM (
+                SELECT BR_TCHR_ASSIGNED_CLASS_ID AS class_id FROM SCHL_BR_TCHR WHERE BR_TCHR_ID = ? AND BR_TCHR_ASSIGNED_CLASS_ID IS NOT NULL AND BR_TCHR_ASSIGNED_CLASS_ID != ''
+                UNION
+                SELECT sub.BR_CLS_ID AS class_id FROM SCHL_TCHR_SUB ts JOIN SCHL_BR_CLS_SUBJECT sub ON ts.TCHR_SUB_ID = sub.BR_CLS_SUB_ID WHERE ts.TCHR_ID = ?
+                UNION
+                SELECT DISTINCT COALESCE(sess.SCHL_BR_CLASS_SEC_SESS_CLASS, sch.SCHL_CLS_SCHLDL_SEC_SESS_ID) AS class_id
+                FROM SCHL_CLS_SCHLDL sch
+                LEFT JOIN SCHL_BR_CLASS_SEC_SESSION sess ON sch.SCHL_CLS_SCHLDL_SEC_SESS_ID = sess.SCHL_BR_CLASS_SEC_SESS_ID
+                WHERE sch.SCHL_BR_TCHR_ID = ?
+            ) AS t_classes WHERE class_id IS NOT NULL AND class_id != ''
+        ");
+        $clsStmt->execute([$tchrId, $tchrId, $tchrId]);
+        $classIds = $clsStmt->fetchAll(PDO::FETCH_COLUMN);
+
+        $myClassesCount = count($classIds);
+        $studentsCount = 0;
+        $attendanceRecords = [];
+
+        if (!empty($classIds)) {
+            $inClause = implode(',', array_fill(0, count($classIds), '?'));
+            $stuStmt = $this->db->prepare("
+                SELECT COUNT(DISTINCT s.STU_ID) 
+                FROM SCHL_STU s
+                LEFT JOIN SCHL_BR_CLASS_SEC_SESSION sess ON s.STU_BR_CLASS_ID = sess.SCHL_BR_CLASS_SEC_SESS_ID
+                WHERE sess.SCHL_BR_CLASS_SEC_SESS_CLASS IN ($inClause) OR s.STU_BR_CLASS_ID IN ($inClause)
+            ");
+            $stuParams = array_merge($classIds, $classIds);
+            $stuStmt->execute($stuParams);
+            $studentsCount = (int)$stuStmt->fetchColumn();
+
+            $attStmt = $this->db->prepare("
+                SELECT a.STU_ATT_DT as day_date, 
+                       SUM(CASE WHEN a.STU_PRES IN ('Y', 'Present', 'P', 'present', 'p', 'y') THEN 1 ELSE 0 END) as present,
+                       COUNT(a.STU_ATT_ID) as total
+                FROM SCHL_STU_ATT a
+                JOIN SCHL_STU s ON a.STU_STU_ID = s.STU_ID
+                LEFT JOIN SCHL_BR_CLASS_SEC_SESSION sess ON s.STU_BR_CLASS_ID = sess.SCHL_BR_CLASS_SEC_SESS_ID
+                WHERE sess.SCHL_BR_CLASS_SEC_SESS_CLASS IN ($inClause) OR s.STU_BR_CLASS_ID IN ($inClause)
+                GROUP BY a.STU_ATT_DT 
+                ORDER BY a.STU_ATT_DT DESC 
+                LIMIT 7
+            ");
+            $attStmt->execute($stuParams);
+            $attendanceRecords = $attStmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+
+        $unreadMessages = $branchId
+            ? $this->queryCount("SELECT COUNT(*) FROM SCHL_MESSAGES WHERE branch_id = ? AND status = 'unread'", [$branchId])
+            : 0;
+
+        return [
+            'studentsCount' => $studentsCount,
+            'facultyCount' => $myClassesCount,
+            'my_classes' => $myClassesCount,
+            'usersCount' => $studentsCount,
+            'schoolsCount' => 1,
+            'branchesCount' => 1,
+            'unreadMessages' => $unreadMessages,
+            'attendanceRecords' => $attendanceRecords,
+            'branchId' => $branchId
         ];
     }
 

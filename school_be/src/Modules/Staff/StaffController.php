@@ -31,6 +31,13 @@ class StaffController {
 
     // --- Teachers CRUD ---
     public function handleTeachers($method, $id, $data) {
+        if (in_array($method, ['POST', 'PUT', 'DELETE']) && $this->user) {
+            $userRole = strtoupper($this->user['role_id'] ?? $this->user['user_role'] ?? '');
+            if ($userRole === 'R_TEACHER' || $userRole === 'TEACHER' || strpos($userRole, 'TEACHER') !== false) {
+                Response::error("Access denied: Teachers cannot create, modify, or delete teacher records.", 403);
+                return;
+            }
+        }
         switch ($method) {
             case 'GET':
                 if ($id) {
@@ -247,6 +254,13 @@ class StaffController {
 
     // --- Teacher-Subject Mappings CRUD ---
     public function handleMappings($method, $id, $data) {
+        if (in_array($method, ['POST', 'PUT', 'DELETE']) && $this->user) {
+            $userRole = strtoupper($this->user['role_id'] ?? $this->user['user_role'] ?? '');
+            if ($userRole === 'R_TEACHER' || $userRole === 'TEACHER' || strpos($userRole, 'TEACHER') !== false) {
+                Response::error("Access denied: Teachers cannot create, modify, or delete subject mappings.", 403);
+                return;
+            }
+        }
         switch ($method) {
             case 'GET':
                 try {
@@ -309,6 +323,22 @@ class StaffController {
         }
     }
 
+    private function resolveTeacherId($user) {
+        if (!$user) return null;
+        $userId = $user['teacher_id'] ?? $user['teacherId'] ?? $user['userId'] ?? $user['user_id'] ?? $user['id'] ?? null;
+        $email = $user['email'] ?? $user['user_email_id'] ?? null;
+
+        try {
+            $db = Database::getConnection();
+            $stmt = $db->prepare("SELECT BR_TCHR_ID FROM SCHL_BR_TCHR WHERE BR_TCHR_ID = ? OR (BR_TCHR_EMAI_ID = ? AND BR_TCHR_EMAI_ID IS NOT NULL AND BR_TCHR_EMAI_ID != '') LIMIT 1");
+            $stmt->execute([$userId, $email]);
+            $found = $stmt->fetchColumn();
+            if ($found) return $found;
+        } catch (Exception $e) {}
+
+        return $userId;
+    }
+
     // --- Teacher Attendance CRUD ---
     public function handleAttendance($method, $id, $data) {
         if ($method === 'GET' && $id === 'summary') {
@@ -316,10 +346,12 @@ class StaffController {
             return;
         }
 
+        $userRole = strtoupper($this->user['role_id'] ?? $this->user['user_role'] ?? $this->user['role'] ?? '');
+        $isTeacher = ($userRole === 'R_TEACHER' || $userRole === 'TEACHER' || strpos($userRole, 'TEACHER') !== false);
+        $isBranchAdmin = ($userRole === 'R_BRANCHADMIN' || strpos($userRole, 'BRANCH') !== false || $userRole === 'R_SUPERADMIN');
+
         // Only Branch Admin (or Super Admin) can record or update teacher attendance
         if (in_array($method, ['POST', 'PUT', 'DELETE'])) {
-            $userRole = strtoupper($this->user['role_id'] ?? $this->user['user_role'] ?? '');
-            $isBranchAdmin = ($userRole === 'R_BRANCHADMIN' || strpos($userRole, 'BRANCH') !== false || $userRole === 'R_SUPERADMIN');
             if (!$isBranchAdmin) {
                 Response::error("Access denied: Only Branch Admin can record or update teacher attendance.", 403);
                 return;
@@ -328,7 +360,28 @@ class StaffController {
 
         switch ($method) {
             case 'GET':
+                // Allow fetching self attendance by /staff/attendance/me or /attendance/teachers/me
+                if ($id === 'me') {
+                    $resolvedTeacherId = $this->resolveTeacherId($this->user);
+                    $attDate = isset($data['date']) ? $data['date'] : date('Y-m-d');
+                    $att = $this->attendanceModel->getById($resolvedTeacherId, $attDate);
+                    if ($att) {
+                        Response::success("Teacher attendance fetched", [$att]);
+                    } else {
+                        Response::success("No attendance record found", []);
+                    }
+                    return;
+                }
+
                 if ($id) {
+                    // Strict role-based authorization check: if requester is a Teacher, prevent viewing other teachers' records
+                    if ($isTeacher) {
+                        $resolvedTeacherId = $this->resolveTeacherId($this->user);
+                        if ($id !== $resolvedTeacherId) {
+                            Response::error("Access denied: You are not authorized to view other teachers' attendance records.", 403);
+                            return;
+                        }
+                    }
                     $att = $this->attendanceModel->getById($id);
                     if ($att) Response::success("Attendance found", $att);
                     else Response::error("Attendance not found", 404);
@@ -343,6 +396,24 @@ class StaffController {
                     if (isset($data['date'])) $filters['date'] = $data['date'];
                     if (isset($data['status'])) $filters['status'] = $data['status'];
                     
+                    // Strict role-based authorization check:
+                    // If requester's role is 'Teacher', automatically inject teacher_id filter.
+                    // Disregard and overwrite any client-side attempts by a teacher to remove or tamper with this ID filter.
+                    if ($isTeacher) {
+                        $resolvedTeacherId = $this->resolveTeacherId($this->user);
+                        $filters['teacher_id'] = $resolvedTeacherId;
+                        $filters['teacherId'] = $resolvedTeacherId;
+                    } else {
+                        // Allow administrators to filter by teacherId if specified
+                        if (!empty($data['teacherId'])) {
+                            $filters['teacher_id'] = $data['teacherId'];
+                            $filters['teacherId'] = $data['teacherId'];
+                        } elseif (!empty($data['teacher_id'])) {
+                            $filters['teacher_id'] = $data['teacher_id'];
+                            $filters['teacherId'] = $data['teacher_id'];
+                        }
+                    }
+
                     $items = $this->attendanceModel->getAll($filters, $limit, $offset, $this->user);
                     $total = $this->attendanceModel->getTotalCount($filters, $this->user);
                     $pagination = [

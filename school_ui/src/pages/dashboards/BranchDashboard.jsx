@@ -234,14 +234,14 @@ export default function BranchDashboard() {
         <motion.div whileHover={{ y: -4 }} className="glass-panel metric-card" onClick={() => navigate('/student/students')} style={{ cursor: 'pointer' }}>
           <div className="metric-icon-wrap metric-icon-blue"><FaGraduationCap /></div>
           <div className="metric-label">Total Students</div>
-          <div className="metric-value">{metrics.total_students.toLocaleString()}</div>
+          <div className="metric-value">{(metrics.total_students || 0).toLocaleString()}</div>
           <span className="metric-delta metric-delta-up">▲ Active branch students</span>
         </motion.div>
 
         <motion.div whileHover={{ y: -4 }} className="glass-panel metric-card" onClick={() => navigate('/teacher/teachers')} style={{ cursor: 'pointer' }}>
           <div className="metric-icon-wrap metric-icon-green"><FaChalkboardTeacher /></div>
           <div className="metric-label">Active Faculty</div>
-          <div className="metric-value">{metrics.active_faculty.toLocaleString()}</div>
+          <div className="metric-value">{(metrics.active_faculty || 0).toLocaleString()}</div>
           <span className="metric-delta metric-delta-neutral">Branch faculty staff</span>
         </motion.div>
 
@@ -257,7 +257,7 @@ export default function BranchDashboard() {
         <motion.div whileHover={{ y: -4 }} className="glass-panel metric-card" onClick={() => navigate('/academic/student-attendance')} style={{ cursor: 'pointer' }}>
           <div className="metric-icon-wrap metric-icon-orange"><FaChartBar /></div>
           <div className="metric-label">Daily Attendance</div>
-          <div className="metric-value">{metrics.daily_attendance_avg}%</div>
+          <div className="metric-value">{metrics.daily_attendance_avg || 0}%</div>
           <span className="metric-delta metric-delta-up">▲ Branch average rate</span>
         </motion.div>
 
@@ -309,7 +309,7 @@ export default function BranchDashboard() {
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,90,158,0.04)' }} />
                 <Bar dataKey="present" name="present" radius={[5, 5, 0, 0]} maxBarSize={34}>
                   {chartData.map((entry) => (
-                    <Cell key={entry.day} fill={BAR_COLORS[entry.day]} />
+                    <Cell key={entry.day} fill={BAR_COLORS[entry.day] || '#0078D4'} />
                   ))}
                 </Bar>
               </BarChart>

@@ -252,57 +252,63 @@ export default function FeesDuePaidReport({ forcedRole = null }) {
           Fee Structure & Itemized Allocation
         </h3>
 
-        <div className="grid-auto-md" style={{ gap: '14px' }}>
-          {feeHeads.map(fh => {
-            const isFullPaid = fh.due === 0
-            const pct = Math.round((fh.paid * 100) / fh.total)
-            return (
-              <div 
-                key={fh.id}
-                className="glass-panel"
-                style={{
-                  padding: '16px 18px',
-                  borderRadius: '10px',
-                  borderLeft: isFullPaid ? '4px solid #10b981' : fh.paid > 0 ? '4px solid #f59e0b' : '4px solid #ef4444'
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                  <div style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--clr-text, #111827)' }}>
-                    {fh.name}
+        {feeHeads.length > 0 ? (
+          <div className="grid-auto-md" style={{ gap: '14px' }}>
+            {feeHeads.map(fh => {
+              const isFullPaid = fh.due === 0
+              const pct = fh.total > 0 ? Math.round((fh.paid * 100) / fh.total) : 0
+              return (
+                <div 
+                  key={fh.id}
+                  className="glass-panel"
+                  style={{
+                    padding: '16px 18px',
+                    borderRadius: '10px',
+                    borderLeft: isFullPaid ? '4px solid #10b981' : fh.paid > 0 ? '4px solid #f59e0b' : '4px solid #ef4444'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                    <div style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--clr-text, #111827)' }}>
+                      {fh.name}
+                    </div>
+                    <span
+                      style={{
+                        fontSize: '0.7rem',
+                        fontWeight: 700,
+                        padding: '2px 8px',
+                        borderRadius: '10px',
+                        background: isFullPaid ? 'rgba(16, 185, 129, 0.12)' : fh.paid > 0 ? 'rgba(245, 158, 11, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                        color: isFullPaid ? '#059669' : fh.paid > 0 ? '#d97706' : '#dc2626'
+                      }}
+                    >
+                      {fh.status}
+                    </span>
                   </div>
-                  <span
-                    style={{
-                      fontSize: '0.7rem',
-                      fontWeight: 700,
-                      padding: '2px 8px',
-                      borderRadius: '10px',
-                      background: isFullPaid ? 'rgba(16, 185, 129, 0.12)' : fh.paid > 0 ? 'rgba(245, 158, 11, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-                      color: isFullPaid ? '#059669' : fh.paid > 0 ? '#d97706' : '#dc2626'
-                    }}
-                  >
-                    {fh.status}
-                  </span>
-                </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--clr-text-muted, #6b7280)', marginBottom: '8px' }}>
-                  <span>Paid: <strong>₹{fh.paid.toLocaleString()}</strong></span>
-                  <span>Due: <strong style={{ color: fh.due > 0 ? '#ef4444' : undefined }}>₹{fh.due.toLocaleString()}</strong></span>
-                </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--clr-text-muted, #6b7280)', marginBottom: '8px' }}>
+                    <span>Paid: <strong>₹{fh.paid.toLocaleString()}</strong></span>
+                    <span>Due: <strong style={{ color: fh.due > 0 ? '#ef4444' : undefined }}>₹{fh.due.toLocaleString()}</strong></span>
+                  </div>
 
-                <div style={{ width: '100%', height: '6px', background: 'rgba(0,0,0,0.06)', borderRadius: '3px', overflow: 'hidden' }}>
-                  <div 
-                    style={{ 
-                      width: `${pct}%`, 
-                      height: '100%', 
-                      background: isFullPaid ? '#10b981' : '#f59e0b', 
-                      borderRadius: '3px' 
-                    }} 
-                  />
+                  <div style={{ width: '100%', height: '6px', background: 'rgba(0,0,0,0.06)', borderRadius: '3px', overflow: 'hidden' }}>
+                    <div 
+                      style={{ 
+                        width: `${pct}%`, 
+                        height: '100%', 
+                        background: isFullPaid ? '#10b981' : '#f59e0b', 
+                        borderRadius: '3px' 
+                      }} 
+                    />
+                  </div>
                 </div>
-              </div>
-            )
-          })}
-        </div>
+              )
+            })}
+          </div>
+        ) : (
+          <div className="glass-panel" style={{ padding: '24px', textAlign: 'center', color: 'var(--clr-text-muted, #6b7280)', borderRadius: '10px' }}>
+            No fee head breakdown records available.
+          </div>
+        )}
       </div>
 
       {/* ── Invoices & Receipts Table ─────────────────────────── */}
@@ -333,76 +339,84 @@ export default function FeesDuePaidReport({ forcedRole = null }) {
               </tr>
             </thead>
             <tbody>
-              {invoices.map(inv => {
-                const isPaid = inv.status === 'PAID'
-                const isPartial = inv.status === 'PARTIAL'
-                return (
-                  <tr 
-                    key={inv.invoiceNo} 
-                    style={{ 
-                      borderBottom: '1px solid var(--clr-border, #f3f4f6)', 
-                      fontSize: '0.875rem' 
-                    }}
-                  >
-                    <td style={{ padding: '14px 16px', fontWeight: 700, color: 'var(--clr-primary, #005A9E)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <FaFileInvoiceDollar />
-                        {inv.invoiceNo}
-                      </div>
-                    </td>
-                    <td style={{ padding: '14px 16px', fontWeight: 600, color: 'var(--clr-text, #111827)' }}>
-                      {inv.description}
-                      <div style={{ fontSize: '0.75rem', color: 'var(--clr-text-muted, #6b7280)', fontWeight: 400 }}>
-                        Due: {inv.dueDate}
-                      </div>
-                    </td>
-                    <td style={{ padding: '14px 16px', fontWeight: 600 }}>
-                      ₹{inv.totalAmount.toLocaleString()}
-                    </td>
-                    <td style={{ padding: '14px 16px', fontWeight: 600, color: '#10b981' }}>
-                      ₹{inv.paidAmount.toLocaleString()}
-                    </td>
-                    <td style={{ padding: '14px 16px', fontWeight: 600, color: inv.dueAmount > 0 ? '#ef4444' : '#6b7280' }}>
-                      ₹{inv.dueAmount.toLocaleString()}
-                    </td>
-                    <td style={{ padding: '14px 16px', color: 'var(--clr-text-muted, #6b7280)' }}>
-                      {inv.method}
-                    </td>
-                    <td style={{ padding: '14px 16px' }}>
-                      <span
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          padding: '3px 10px',
-                          borderRadius: '12px',
-                          fontSize: '0.72rem',
-                          fontWeight: 700,
-                          background: isPaid 
-                            ? 'rgba(16, 185, 129, 0.12)' 
-                            : isPartial 
-                              ? 'rgba(245, 158, 11, 0.12)' 
-                              : 'rgba(239, 68, 68, 0.12)',
-                          color: isPaid ? '#059669' : isPartial ? '#d97706' : '#dc2626'
-                        }}
-                      >
-                        {isPaid ? <FaCheckCircle /> : <FaExclamationCircle />}
-                        {inv.status}
-                      </span>
-                    </td>
-                    <td style={{ padding: '14px 16px', textAlign: 'right' }}>
-                      <button
-                        type="button"
-                        onClick={() => openReceipt(inv)}
-                        className="btn btn-secondary"
-                        style={{ padding: '4px 10px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
-                      >
-                        <FaReceipt /> View
-                      </button>
-                    </td>
-                  </tr>
-                )
-              })}
+              {invoices.length > 0 ? (
+                invoices.map(inv => {
+                  const isPaid = inv.status === 'PAID'
+                  const isPartial = inv.status === 'PARTIAL'
+                  return (
+                    <tr 
+                      key={inv.invoiceNo} 
+                      style={{ 
+                        borderBottom: '1px solid var(--clr-border, #f3f4f6)', 
+                        fontSize: '0.875rem' 
+                      }}
+                    >
+                      <td style={{ padding: '14px 16px', fontWeight: 700, color: 'var(--clr-primary, #005A9E)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <FaFileInvoiceDollar />
+                          {inv.invoiceNo}
+                        </div>
+                      </td>
+                      <td style={{ padding: '14px 16px', fontWeight: 600, color: 'var(--clr-text, #111827)' }}>
+                        {inv.description}
+                        <div style={{ fontSize: '0.75rem', color: 'var(--clr-text-muted, #6b7280)', fontWeight: 400 }}>
+                          Due: {inv.dueDate}
+                        </div>
+                      </td>
+                      <td style={{ padding: '14px 16px', fontWeight: 600 }}>
+                        ₹{inv.totalAmount.toLocaleString()}
+                      </td>
+                      <td style={{ padding: '14px 16px', fontWeight: 600, color: '#10b981' }}>
+                        ₹{inv.paidAmount.toLocaleString()}
+                      </td>
+                      <td style={{ padding: '14px 16px', fontWeight: 600, color: inv.dueAmount > 0 ? '#ef4444' : '#6b7280' }}>
+                        ₹{inv.dueAmount.toLocaleString()}
+                      </td>
+                      <td style={{ padding: '14px 16px', color: 'var(--clr-text-muted, #6b7280)' }}>
+                        {inv.method}
+                      </td>
+                      <td style={{ padding: '14px 16px' }}>
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '3px 10px',
+                            borderRadius: '12px',
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            background: isPaid 
+                              ? 'rgba(16, 185, 129, 0.12)' 
+                              : isPartial 
+                                ? 'rgba(245, 158, 11, 0.12)' 
+                                : 'rgba(239, 68, 68, 0.12)',
+                            color: isPaid ? '#059669' : isPartial ? '#d97706' : '#dc2626'
+                          }}
+                        >
+                          {isPaid ? <FaCheckCircle /> : <FaExclamationCircle />}
+                          {inv.status}
+                        </span>
+                      </td>
+                      <td style={{ padding: '14px 16px', textAlign: 'right' }}>
+                        <button
+                          type="button"
+                          onClick={() => openReceipt(inv)}
+                          className="btn btn-secondary"
+                          style={{ padding: '4px 10px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
+                        >
+                          <FaReceipt /> View
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })
+              ) : (
+                <tr>
+                  <td colSpan={8} style={{ padding: '24px', textAlign: 'center', color: 'var(--clr-text-muted, #6b7280)' }}>
+                    No invoice or receipt records found for this student.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

@@ -434,6 +434,14 @@ class AcademicController {
     }
 
     public function handleClasses($method, $id, $data) {
+        if (in_array($method, ['POST', 'PUT', 'DELETE']) && $this->user) {
+            $userRole = strtoupper($this->user['role_id'] ?? $this->user['user_role'] ?? '');
+            if ($userRole === 'R_TEACHER' || $userRole === 'TEACHER' || strpos($userRole, 'TEACHER') !== false) {
+                Response::error("Access denied: Teachers are not authorized to create, modify, or delete classes.", 403);
+                return;
+            }
+        }
+
         switch ($method) {
             case 'GET':
                 if ($id) {

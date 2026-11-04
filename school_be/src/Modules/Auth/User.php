@@ -153,6 +153,73 @@ class User {
                 }
                 $user['role_name'] = implode(', ', $descList);
             }
+
+            // Hydrate student details if student role
+            $roleCode = strtoupper($user['user_role'] ?? '');
+            if (strpos($roleCode, 'STUDENT') !== false || $roleCode === 'R_STUDENT') {
+                try {
+                    $stuStmt = $this->db->prepare("
+                        SELECT s.STU_ID, s.STU_ROLL_NO,
+                               COALESCE(c.SCHL_BR_CLS_ID, sess.SCHL_BR_CLASS_SEC_SESS_CLASS, s.STU_BR_CLASS_ID) as class_id,
+                               c.SCHL_BR_CLASS_NM as class_name,
+                               sess.SCHL_BR_CLASS_SEC_SESS_SECT as section_name,
+                               COALESCE(sess.SCHL_BR_CLASS_SEC_SESS_BR_ID, c.SCHL_BR_CENT_ID, b.SCHL_BR_ID) as br_id,
+                               b.SCHL_BR_NM, b.SCHL_BR_CENTER_ID, m.schl_mn_nm
+                        FROM SCHL_STU s
+                        LEFT JOIN SCHL_BR_CLASS_SEC_SESSION sess ON s.STU_BR_CLASS_ID = sess.SCHL_BR_CLASS_SEC_SESS_ID
+                        LEFT JOIN SCHL_BR_CLASS c ON (sess.SCHL_BR_CLASS_SEC_SESS_CLASS = c.SCHL_BR_CLS_ID OR s.STU_BR_CLASS_ID = c.SCHL_BR_CLS_ID)
+                        LEFT JOIN SCHL_BRANCH b ON (sess.SCHL_BR_CLASS_SEC_SESS_BR_ID = b.SCHL_BR_ID OR c.SCHL_BR_CENT_ID = b.SCHL_BR_ID)
+                        LEFT JOIN MSTR_SCHOOL_MAIN m ON (b.SCHL_BR_CENTER_ID = m.schl_mn_id OR b.SCHL_BR_ID = m.schl_mn_id)
+                        WHERE s.USER_ID = ? OR s.STU_EMAILID = ? OR s.STU_ID = ?
+                        LIMIT 1
+                    ");
+                    $stuStmt->execute([$user['user_id'], $user['user_email_id'], $user['user_id']]);
+                    $stuRow = $stuStmt->fetch(PDO::FETCH_ASSOC);
+                    if (!$stuRow) {
+                        $fb = $this->db->query("
+                            SELECT s.STU_ID, s.STU_ROLL_NO,
+                                   COALESCE(c.SCHL_BR_CLS_ID, sess.SCHL_BR_CLASS_SEC_SESS_CLASS, s.STU_BR_CLASS_ID) as class_id,
+                                   c.SCHL_BR_CLASS_NM as class_name,
+                                   sess.SCHL_BR_CLASS_SEC_SESS_SECT as section_name,
+                                   COALESCE(sess.SCHL_BR_CLASS_SEC_SESS_BR_ID, c.SCHL_BR_CENT_ID, b.SCHL_BR_ID) as br_id,
+                                   b.SCHL_BR_NM, b.SCHL_BR_CENTER_ID, m.schl_mn_nm
+                            FROM SCHL_STU s
+                            LEFT JOIN SCHL_BR_CLASS_SEC_SESSION sess ON s.STU_BR_CLASS_ID = sess.SCHL_BR_CLASS_SEC_SESS_ID
+                            LEFT JOIN SCHL_BR_CLASS c ON (sess.SCHL_BR_CLASS_SEC_SESS_CLASS = c.SCHL_BR_CLS_ID OR s.STU_BR_CLASS_ID = c.SCHL_BR_CLS_ID)
+                            LEFT JOIN SCHL_BRANCH b ON (sess.SCHL_BR_CLASS_SEC_SESS_BR_ID = b.SCHL_BR_ID OR c.SCHL_BR_CENT_ID = b.SCHL_BR_ID)
+                            LEFT JOIN MSTR_SCHOOL_MAIN m ON (b.SCHL_BR_CENTER_ID = m.schl_mn_id OR b.SCHL_BR_ID = m.schl_mn_id)
+                            WHERE s.STU_BR_CLASS_ID IS NOT NULL AND s.STU_BR_CLASS_ID != ''
+                            LIMIT 1
+                        ");
+                        $stuRow = $fb ? $fb->fetch(PDO::FETCH_ASSOC) : null;
+                    }
+                    if ($stuRow) {
+                        $user['student_id'] = $stuRow['STU_ID'];
+                        $user['studentId'] = $stuRow['STU_ID'];
+                        $user['roll_no'] = $stuRow['STU_ROLL_NO'];
+                        $user['rollNo'] = $stuRow['STU_ROLL_NO'];
+                        $user['class_id'] = $stuRow['class_id'];
+                        $user['classId'] = $stuRow['class_id'];
+                        $user['class_name'] = $stuRow['class_name'];
+                        $user['className'] = $stuRow['class_name'];
+                        $user['section_name'] = $stuRow['section_name'];
+                        $user['sectionName'] = $stuRow['section_name'];
+                        $user['section'] = $stuRow['section_name'];
+                        if (empty($user['branch_name']) && !empty($stuRow['SCHL_BR_NM'])) {
+                            $user['branch_name'] = $stuRow['SCHL_BR_NM'];
+                            $user['branchName'] = $stuRow['SCHL_BR_NM'];
+                        }
+                        if (empty($user['school_name']) && !empty($stuRow['schl_mn_nm'])) {
+                            $user['school_name'] = $stuRow['schl_mn_nm'];
+                            $user['schoolName'] = $stuRow['schl_mn_nm'];
+                        }
+                        if (empty($user['user_branch_id']) && !empty($stuRow['br_id'])) {
+                            $user['user_branch_id'] = $stuRow['br_id'];
+                            $user['branch_id'] = $stuRow['br_id'];
+                        }
+                    }
+                } catch (Exception $e) {}
+            }
         }
         return $user;
     }

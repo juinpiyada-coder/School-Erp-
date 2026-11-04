@@ -1,8 +1,8 @@
 import axios from '../../lib/axios'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { FaCalendarAlt, FaEdit, FaClock, FaPrint, FaTrash } from 'react-icons/fa'
+import { FaCalendarAlt, FaEdit, FaClock, FaPrint, FaTrash, FaUserCheck, FaLayerGroup } from 'react-icons/fa'
 
 
 import { toast } from 'react-toastify'
@@ -80,10 +80,13 @@ export default function ClassSchedule() {
   const [schedule, setSchedule] = useState([]) // RAW data from backend
   const [loading, setLoading] = useState(false)
   const [role, setRole] = useState('')
+  const [currentUser, setCurrentUser] = useState(null)
+  const [teacherFilterOnlyMine, setTeacherFilterOnlyMine] = useState(true)
 
   useEffect(() => {
     try {
       const u = JSON.parse(sessionStorage.getItem('e_school_user') || '{}')
+      setCurrentUser(u)
       setRole((u?.user_role || u?.role || '').toLowerCase())
     } catch (e) {}
   }, [])
@@ -95,6 +98,7 @@ export default function ClassSchedule() {
   }, [role, navigate])
 
   const isReadOnlyRole = role.includes('student') || role.includes('guardian') || role.includes('parent')
+  const isTeacher = role.includes('teacher') || (currentUser?.role_id && String(currentUser.role_id).toUpperCase() === 'R_TEACHER')
   
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingSlot, setEditingSlot] = useState(null)
@@ -258,6 +262,37 @@ export default function ClassSchedule() {
     return t ? (t.BR_TCHR_NM || t.br_tchr_nm || t.TCHR_NM || t.tchr_nm || t.name) : ''
   }
 
+  // Teacher identification to filter or highlight assigned routines
+  const currentTeacherId = useMemo(() => {
+    if (!currentUser) return null
+    const uid = String(currentUser.id || currentUser.user_id || '').toLowerCase()
+    const uemail = String(currentUser.email || currentUser.user_email_id || '').toLowerCase()
+    const uname = String(currentUser.name || currentUser.first_name || '').toLowerCase()
+    
+    // Find teacher record matching logged-in user
+    const matched = teachers.find(t => {
+      const tId = String(t.BR_TCHR_ID || t.br_tchr_id || t.TCHR_ID || t.tchr_id || t.id || '').toLowerCase()
+      const tEmail = String(t.BR_TCHR_EMAI_ID || t.TCHR_EMAIL || t.email || '').toLowerCase()
+      const tName = String(t.BR_TCHR_NM || t.br_tchr_nm || t.TCHR_NM || t.tchr_nm || t.name || '').toLowerCase()
+      return (tId && tId === uid) || (tEmail && tEmail === uemail) || (uname && tName === uname)
+    })
+    return matched ? String(matched.BR_TCHR_ID || matched.br_tchr_id || matched.TCHR_ID || matched.tchr_id || matched.id) : null
+  }, [currentUser, teachers])
+
+  const isSlotAssignedToCurrentTeacher = useCallback((slot) => {
+    if (!slot) return false
+    const slotTchrId = String(slot.SCHL_BR_TCHR_ID || slot.schl_br_tchr_id || '')
+    if (currentTeacherId && slotTchrId === String(currentTeacherId)) return true
+
+    // Also match by teacher name / user name as fallback
+    const tchrName = getTeacherName(slotTchrId).toLowerCase().trim()
+    const curUserName = String(currentUser?.name || `${currentUser?.first_name || ''} ${currentUser?.last_name || ''}`).toLowerCase().trim()
+    if (tchrName && curUserName && (tchrName === curUserName || curUserName.includes(tchrName) || tchrName.includes(curUserName))) {
+      return true
+    }
+    return false
+  }, [currentTeacherId, currentUser, teachers])
+
   const getSubjectName = (id) => {
     const s = subjects.find(s => String(s.BR_CLS_SUB_ID || s.br_cls_sub_id || s.SUB_ID || s.sub_id || s.id) === String(id))
     return s ? (s.BR_CLS_SUB_NAME || s.br_cls_sub_name || s.SUB_NM || s.sub_nm || s.name) : ''
@@ -319,6 +354,23 @@ export default function ClassSchedule() {
                   ⚡ Matrix: {currentMatrix.SCHL_UNIQ_MATRIX_NM || currentMatrix.uniqueName} ({currentMatrix.SCHL_NO_OF_CLASS || currentMatrix.noOfClass || 6} periods @ {currentMatrix.SCHL_CLASS_DURATION || currentMatrix.duration || 45}m)
                 </span>
               )}
+              {isTeacher && (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(0, 90, 158, 0.08)', padding: '4px 10px', borderRadius: '8px', border: '1px solid rgba(0, 90, 158, 0.2)' }}>
+                  <button
+                    type="button"
+                    onClick={() => setTeacherFilterOnlyMine(prev => !prev)}
+                    className={`btn btn-sm ${teacherFilterOnlyMine ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{ fontSize: '0.82rem', padding: '4px 10px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                    title={teacherFilterOnlyMine ? 'Currently showing only your routine slots' : 'Currently showing entire class routine'}
+                  >
+                    {teacherFilterOnlyMine ? <FaUserCheck /> : <FaLayerGroup />}
+                    {teacherFilterOnlyMine ? 'My Routine Only' : 'Show All Routine'}
+                  </button>
+                  <span style={{ fontSize: '0.78rem', color: '#005A9E', fontWeight: 600 }}>
+                    {currentUser?.name || 'Teacher'}
+                  </span>
+                </div>
+              )}
             </>
           )}
 
@@ -371,21 +423,35 @@ export default function ClassSchedule() {
                       }
                       
                       const slot = getSlotData(day, period.id)
-                      const subName = slot ? getSubjectName(slot.SCHL_CLS_SCHLDL_SUB_ID || slot.schl_cls_schldl_sub_id) : ''
-                      const tchrName = slot ? getTeacherName(slot.SCHL_BR_TCHR_ID || slot.schl_br_tchr_id) : ''
-                      const rmName = slot ? getRoomName(slot.SCHL_BR_RM_ID || slot.schl_br_rm_id) : ''
+                      const isMine = slot ? isSlotAssignedToCurrentTeacher(slot) : false
+                      
+                      // If teacher has "My Routine Only" toggled ON, and slot is not theirs, hide it or show empty
+                      const displaySlot = isTeacher && teacherFilterOnlyMine ? (isMine ? slot : null) : slot
+
+                      const subName = displaySlot ? getSubjectName(displaySlot.SCHL_CLS_SCHLDL_SUB_ID || displaySlot.schl_cls_schldl_sub_id) : ''
+                      const tchrName = displaySlot ? getTeacherName(displaySlot.SCHL_BR_TCHR_ID || displaySlot.schl_br_tchr_id) : ''
+                      const rmName = displaySlot ? getRoomName(displaySlot.SCHL_BR_RM_ID || displaySlot.schl_br_rm_id) : ''
                       
                       return (
                         <td key={day} className={`relative group p-2 ${!isReadOnlyRole ? 'hover:bg-white/5 transition-colors cursor-pointer' : ''}`} onClick={() => !isReadOnlyRole && openEditModal(day, period.id)}>
-                          <div className={`h-full w-full rounded p-2 flex flex-col justify-center items-center min-h-[80px] border border-transparent ${!isReadOnlyRole ? 'group-hover:border-primary/30' : ''}`}>
-                            {slot ? (
+                          <div className={`h-full w-full rounded p-2 flex flex-col justify-center items-center min-h-[80px] border transition-all ${
+                            isMine
+                              ? 'border-primary/50 bg-primary/10 shadow-sm' 
+                              : !isReadOnlyRole ? 'border-transparent group-hover:border-primary/30' : 'border-transparent'
+                          }`}>
+                            {displaySlot ? (
                               <>
-                                <div className="font-bold text-primary">{subName || 'Subject'}</div>
-                                {tchrName && <div className="text-small">{tchrName}</div>}
+                                <div className="font-bold text-primary flex items-center gap-1">
+                                  {isMine && <span title="Your Assigned Class" style={{ color: '#059669', fontSize: '0.8rem' }}>★</span>}
+                                  {subName || 'Subject'}
+                                </div>
+                                {tchrName && <div className={`text-small ${isMine ? 'font-semibold text-primary' : ''}`}>{tchrName}</div>}
                                 {rmName && <div className="text-small text-muted">{rmName}</div>}
                               </>
                             ) : (
-                              <div className="text-muted text-small opacity-50">{isReadOnlyRole ? 'No Class' : '+ Assign'}</div>
+                              <div className="text-muted text-small opacity-50">
+                                {isTeacher ? (teacherFilterOnlyMine ? '—' : '+ Assign') : isReadOnlyRole ? 'No Class' : '+ Assign'}
+                              </div>
                             )}
                           </div>
                         </td>

@@ -76,15 +76,27 @@ class TeacherAttendanceModel {
         ];
 
         if ($user) {
-            if ($user['role_id'] === 'R_SCHOOLADMIN') {
+            $userRole = strtoupper($user['role_id'] ?? $user['user_role'] ?? '');
+            if ($userRole === 'R_SCHOOLADMIN') {
                 $where[] = "(b.SCHL_BR_CENTER_ID = :userId OR :userId1 IN ('usr_school', 'usr_super'))";
                 $params['userId'] = $user['userId'];
                 $params['userId1'] = $user['userId'];
-            } elseif ($user['role_id'] === 'R_BRANCHADMIN') {
+            } elseif ($userRole === 'R_BRANCHADMIN') {
                 $where[] = "(tc.BR_TCHR_BR_ID = :userId OR :userId1 IN ('usr_branch', 'usr_super'))";
                 $params['userId'] = $user['userId'];
                 $params['userId1'] = $user['userId'];
+            } elseif ($userRole === 'R_TEACHER' || $userRole === 'TEACHER' || strpos($userRole, 'TEACHER') !== false) {
+                $where[] = "(tc.BR_TCHR_ID = :userId OR (tc.BR_TCHR_EMAI_ID = :userEmail AND :userEmail != ''))";
+                $params['userId'] = $user['teacher_id'] ?? $user['teacherId'] ?? $user['userId'] ?? $user['user_id'] ?? '';
+                $params['userEmail'] = $user['email'] ?? $user['user_email_id'] ?? '';
             }
+        }
+
+        $filterTeacherId = $filters['teacher_id'] ?? $filters['teacherId'] ?? null;
+        if (!empty($filterTeacherId)) {
+            $where[] = "(tc.BR_TCHR_ID = :filterTeacherId OR (tc.BR_TCHR_EMAI_ID = :filterTeacherEmail AND :filterTeacherEmail != ''))";
+            $params['filterTeacherId'] = $filterTeacherId;
+            $params['filterTeacherEmail'] = $filterTeacherId;
         }
 
         if (count($where) > 0) {

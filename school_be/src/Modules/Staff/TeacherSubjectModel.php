@@ -32,6 +32,13 @@ class TeacherSubjectModel {
             } elseif ($user['role_id'] === 'R_BRANCHADMIN') {
                 $sql .= " AND t.BR_TCHR_BR_ID = ?";
                 $params[] = $user['userId'];
+            } elseif ($user['role_id'] === 'R_TEACHER' || ($user['user_role'] ?? '') === 'R_TEACHER' || strpos(strtoupper($user['role_id'] ?? $user['user_role'] ?? ''), 'TEACHER') !== false) {
+                $userEmail = $user['email'] ?? $user['user_email_id'] ?? '';
+                $userId = $user['userId'] ?? $user['user_id'] ?? '';
+                $sql .= " AND (t.BR_TCHR_ID = ? OR (t.BR_TCHR_EMAI_ID = ? AND ? != ''))";
+                $params[] = $userId;
+                $params[] = $userEmail;
+                $params[] = $userEmail;
             }
         }
 
@@ -59,6 +66,13 @@ class TeacherSubjectModel {
             } elseif ($user['role_id'] === 'R_BRANCHADMIN') {
                 $sql .= " AND t.BR_TCHR_BR_ID = ?";
                 $params[] = $user['userId'];
+            } elseif ($user['role_id'] === 'R_TEACHER' || ($user['user_role'] ?? '') === 'R_TEACHER' || strpos(strtoupper($user['role_id'] ?? $user['user_role'] ?? ''), 'TEACHER') !== false) {
+                $userEmail = $user['email'] ?? $user['user_email_id'] ?? '';
+                $userId = $user['userId'] ?? $user['user_id'] ?? '';
+                $sql .= " AND (t.BR_TCHR_ID = ? OR (t.BR_TCHR_EMAI_ID = ? AND ? != ''))";
+                $params[] = $userId;
+                $params[] = $userEmail;
+                $params[] = $userEmail;
             }
         }
         $stmt = $this->db->prepare($sql);

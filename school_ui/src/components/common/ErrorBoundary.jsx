@@ -13,6 +13,17 @@ export default class ErrorBoundary extends Component {
   }
 
   static getDerivedStateFromError(error) {
+    const isChunkLoadError = 
+      error?.name === 'ChunkLoadError' ||
+      /Failed to fetch dynamically imported module/i.test(error?.message || '') ||
+      /Expected a JavaScript-or-Wasm module script/i.test(error?.message || '')
+
+    if (isChunkLoadError && !window.sessionStorage.getItem('chunk_failed_refreshed')) {
+      window.sessionStorage.setItem('chunk_failed_refreshed', 'true')
+      window.location.reload()
+      return { hasError: false, message: '' }
+    }
+
     return { hasError: true, message: error?.message || 'Something went wrong.' }
   }
 

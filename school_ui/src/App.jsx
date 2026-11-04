@@ -11,40 +11,58 @@ import 'react-toastify/dist/ReactToastify.css'
 import { WhitelabelProvider } from './contexts/WhitelabelContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 
+// Safe lazy import wrapper: automatically reloads once if a stale chunk hash fails after a deployment
+function lazyRetry(componentImport) {
+  return lazy(async () => {
+    const pageHasBeenForceRefreshed = window.sessionStorage.getItem('page_has_reloaded_for_chunk')
+    try {
+      return await componentImport()
+    } catch (error) {
+      if (!pageHasBeenForceRefreshed) {
+        window.sessionStorage.setItem('page_has_reloaded_for_chunk', 'true')
+        window.location.reload()
+        return new Promise(() => {}) // never resolves while page reloads
+      }
+      window.sessionStorage.removeItem('page_has_reloaded_for_chunk')
+      throw error
+    }
+  })
+}
+
 // Auth & Common
-const Login = lazy(() => import('./pages/auth/Login'))
-const Roles = lazy(() => import('./pages/auth/Roles'))
-const RoleLinks = lazy(() => import('./pages/auth/RoleLinks'))
-const UserLogins = lazy(() => import('./pages/auth/UserLogins'))
-const Dashboard = lazy(() => import('./pages/common/Dashboard'))
-const Unauthorized = lazy(() => import('./pages/common/Unauthorized'))
-const Reports = lazy(() => import('./pages/common/Reports'))
-const Settings = lazy(() => import('./pages/common/Settings'))
-const Notifications = lazy(() => import('./pages/common/Notifications'))
+const Login = lazyRetry(() => import('./pages/auth/Login'))
+const Roles = lazyRetry(() => import('./pages/auth/Roles'))
+const RoleLinks = lazyRetry(() => import('./pages/auth/RoleLinks'))
+const UserLogins = lazyRetry(() => import('./pages/auth/UserLogins'))
+const Dashboard = lazyRetry(() => import('./pages/common/Dashboard'))
+const Unauthorized = lazyRetry(() => import('./pages/common/Unauthorized'))
+const Reports = lazyRetry(() => import('./pages/common/Reports'))
+const Settings = lazyRetry(() => import('./pages/common/Settings'))
+const Notifications = lazyRetry(() => import('./pages/common/Notifications'))
 
 // Academic & School
-const SchoolDetails = lazy(() => import('./pages/academic/SchoolDetails'))
-const Branches = lazy(() => import('./pages/academic/Branches'))
-const Rooms = lazy(() => import('./pages/academic/Rooms'))
-const Classes = lazy(() => import('./pages/academic/Classes'))
-const ClassMatrix = lazy(() => import('./pages/academic/ClassMatrix'))
-const ClassSessions = lazy(() => import('./pages/academic/ClassSessions'))
-const Subjects = lazy(() => import('./pages/academic/Subjects'))
-const ClassSchedule = lazy(() => import('./pages/academic/ClassSchedule'))
+const SchoolDetails = lazyRetry(() => import('./pages/academic/SchoolDetails'))
+const Branches = lazyRetry(() => import('./pages/academic/Branches'))
+const Rooms = lazyRetry(() => import('./pages/academic/Rooms'))
+const Classes = lazyRetry(() => import('./pages/academic/Classes'))
+const ClassMatrix = lazyRetry(() => import('./pages/academic/ClassMatrix'))
+const ClassSessions = lazyRetry(() => import('./pages/academic/ClassSessions'))
+const Subjects = lazyRetry(() => import('./pages/academic/Subjects'))
+const ClassSchedule = lazyRetry(() => import('./pages/academic/ClassSchedule'))
 
 // Staff & Student
-const Teachers = lazy(() => import('./pages/staff/Teachers'))
-const SubjectMapping = lazy(() => import('./pages/staff/SubjectMapping'))
-const TeacherAttendance = lazy(() => import('./pages/staff/Attendance'))
-const Parents = lazy(() => import('./pages/student/Parents'))
-const Students = lazy(() => import('./pages/student/Students'))
-const StudentAttendance = lazy(() => import('./pages/student/StudentAttendance'))
+const Teachers = lazyRetry(() => import('./pages/staff/Teachers'))
+const SubjectMapping = lazyRetry(() => import('./pages/staff/SubjectMapping'))
+const TeacherAttendance = lazyRetry(() => import('./pages/staff/Attendance'))
+const Parents = lazyRetry(() => import('./pages/student/Parents'))
+const Students = lazyRetry(() => import('./pages/student/Students'))
+const StudentAttendance = lazyRetry(() => import('./pages/student/StudentAttendance'))
 
 // Student & Parent Dedicated Modules
-const DailyRoutine = lazy(() => import('./pages/student/DailyRoutine'))
-const SubjectClassCompletion = lazy(() => import('./pages/student/SubjectClassCompletion'))
-const SubjectAttendanceReport = lazy(() => import('./pages/student/SubjectAttendanceReport'))
-const FeesDuePaidReport = lazy(() => import('./pages/student/FeesDuePaidReport'))
+const DailyRoutine = lazyRetry(() => import('./pages/student/DailyRoutine'))
+const SubjectClassCompletion = lazyRetry(() => import('./pages/student/SubjectClassCompletion'))
+const SubjectAttendanceReport = lazyRetry(() => import('./pages/student/SubjectAttendanceReport'))
+const FeesDuePaidReport = lazyRetry(() => import('./pages/student/FeesDuePaidReport'))
 
 function ProgressWatcher() {
   useEffect(() => {

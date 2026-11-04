@@ -25,6 +25,9 @@ function routeStudentApi($uriPath, $method, $id, $data) {
         case '/api/student/routine':
             $controller->handleDailyRoutine($method, $id, $data);
             break;
+        case '/api/student/profile':
+            $controller->handleStudentProfile($method, $id, $data);
+            break;
         case '/api/student/class-completion':
             $controller->handleClassCompletion($method, $id, $data);
             break;

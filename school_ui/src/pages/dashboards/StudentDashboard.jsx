@@ -76,6 +76,14 @@ function getAttendanceBadge(status) {
 export default function StudentDashboard() {
   const navigate = useNavigate()
   const { settings } = useWhitelabel()
+  const [userData, setUserData] = useState(() => {
+    try {
+      return JSON.parse(sessionStorage.getItem('e_school_user')) || {}
+    } catch (e) {
+      return {}
+    }
+  })
+  const [studentInfo, setStudentInfo] = useState(null)
   const [routines, setRoutines] = useState([])
   const [attendance, setAttendance] = useState({ total: 0, present: 0, absent: 0, pct: null })
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0])
@@ -93,22 +101,28 @@ export default function StudentDashboard() {
     const load = async () => {
       setLoading(true)
       try {
-        const [rRes, aRes] = await Promise.allSettled([
+        const [rRes, aRes, pRes] = await Promise.allSettled([
           axios.get(`${api}/student/routine?date=${selectedDate}`),
-          axios.get(`${api}/student/subject-attendance`)
+          axios.get(`${api}/student/subject-attendance`),
+          axios.get(`${api}/student/profile`)
         ])
+
+        if (pRes.status === 'fulfilled') {
+          const pData = pRes.value?.data?.data || pRes.value?.data || {}
+          setStudentInfo(pData)
+        }
 
         let routineItems = []
         if (rRes.status === 'fulfilled') {
           const payload = rRes.value?.data
-          const items = Array.isArray(payload) ? payload : payload?.data || []
+          const items = Array.isArray(payload) ? payload : (payload?.data || payload?.routines || [])
           routineItems = items.map(mapRoutineItem)
           // Number periods per day in timetable order
           const counters = {}
           routineItems = routineItems.map((it) => {
-            const k = String(it.day || '').toLowerCase()
+            const k = String(it.day || '').trim().toLowerCase()
             counters[k] = (counters[k] || 0) + 1
-            return { ...it, period: `Period ${counters[k]}` }
+            return { ...it, period: it.period && !it.period.startsWith('Period SCH_') ? it.period : `Period ${counters[k]}` }
           })
         }
 
@@ -143,11 +157,11 @@ export default function StudentDashboard() {
 
   const filteredRoutines = useMemo(() => {
     if (selectedDay === 'ALL') return routines
-    return routines.filter(r => String(r.day || '').toLowerCase() === selectedDay.toLowerCase())
+    return routines.filter(r => String(r.day || '').trim().toLowerCase() === selectedDay.trim().toLowerCase())
   }, [routines, selectedDay])
 
   const todayName = new Date().toLocaleDateString('en-US', { weekday: 'long' })
-  const todayRoutines = routines.filter(r => String(r.day || '').toLowerCase() === todayName.toLowerCase())
+  const todayRoutines = routines.filter(r => String(r.day || '').trim().toLowerCase() === todayName.trim().toLowerCase())
 
   const attendancePct = attendance.pct
   const hasAttendance = attendance.total > 0
@@ -179,6 +193,45 @@ export default function StudentDashboard() {
           backgroundPosition: 'center',
         } : {}}
       />
+
+      {/* ── Student Identity Card ───────────────────────────────── */}
+      <div 
+        className="glass-panel" 
+        style={{ 
+          padding: '16px 20px', 
+          marginBottom: '24px', 
+          borderRadius: '12px', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '16px',
+          borderLeft: '4px solid var(--clr-primary, #005A9E)'
+        }}
+      >
+        <div>
+          <div style={{ fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--clr-text-muted, #6b7280)', fontWeight: 600 }}>
+            Student Enrollment Profile
+          </div>
+          <div style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--clr-text, #111827)', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginTop: '2px' }}>
+            <span>{userData?.name || userData?.first_name || 'Enrolled Student'}</span>
+            <span style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--clr-primary, #005A9E)', background: 'rgba(0, 90, 158, 0.08)', padding: '3px 10px', borderRadius: '6px' }}>
+              {studentInfo?.className || userData?.class_name || userData?.className || 'Class'}
+              {(studentInfo?.sectionName || userData?.section_name || userData?.sectionName || userData?.section) ? ` - Section ${studentInfo?.sectionName || userData?.section_name || userData?.sectionName || userData?.section}` : ''}
+            </span>
+            {(studentInfo?.branchName || userData?.branch_name || userData?.branchName) && (
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#059669', background: 'rgba(16, 185, 129, 0.08)', padding: '3px 10px', borderRadius: '6px' }}>
+                Branch: {studentInfo?.branchName || userData?.branch_name || userData?.branchName}
+              </span>
+            )}
+            {(studentInfo?.rollNo || userData?.roll_no || userData?.rollNo) && (
+              <span style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--clr-text-muted, #6b7280)' }}>
+                · Roll No: {studentInfo?.rollNo || userData?.roll_no || userData?.rollNo}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
 
       {loading && routines.length === 0 ? (
         <div className="glass-panel" style={{ padding: '60px', textAlign: 'center', borderRadius: '12px' }}>

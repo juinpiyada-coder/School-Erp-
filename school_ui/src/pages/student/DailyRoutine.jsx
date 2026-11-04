@@ -93,93 +93,18 @@ export default function DailyRoutine({ forcedRole = null }) {
           }))
           setRoutines(mapped)
         } else {
-          // If no specific routine is assigned to the individual record, fallback to schedules
-          axios.get(`${import.meta.env.VITE_API_BASE_URL}/student/schedules?limit=100`)
-            .then(fallbackRes => {
-              const fbList = Array.isArray(fallbackRes.data) ? fallbackRes.data : fallbackRes.data?.data || []
-              if (fbList.length > 0) {
-                const fbMapped = fbList.map(r => ({
-                  id: r.id || r.SCHL_CLS_SCHLDL_ID,
-                  day: r.day || r.SCHL_DAY_OF_WK || 'Monday',
-                  period: r.period || r.period_label || 'Period',
-                  time: r.time || `${(r.SCHL_CLS_SCHDL_FRM_DT || '08:00').substring(0, 5)} - ${(r.SCHL_CLS_SCHDL_TO_DT || '08:45').substring(0, 5)}`,
-                  subject: r.subject || r.subject_name || r.SCHLDL_SUB_NM || 'Subject',
-                  teacher: r.teacher || r.teacher_name || r.SCHLDL_TCHR_NM || 'Faculty Guide',
-                  room: r.room || r.SCHL_BR_RM_ID || 'Classroom',
-                  code: r.code || r.subject_code || 'CRS-101',
-                  type: r.type || 'Lecture'
-                }))
-                setRoutines(fbMapped)
-              } else {
-                setRoutines([])
-              }
-            })
-            .catch(() => setRoutines([]))
+          setRoutines([])
         }
       })
       .catch(() => {
-        axios.get(`${import.meta.env.VITE_API_BASE_URL}/student/schedules?limit=100`)
-          .then(fallbackRes => {
-            const fbList = Array.isArray(fallbackRes.data) ? fallbackRes.data : fallbackRes.data?.data || []
-            if (fbList.length > 0) {
-              const fbMapped = fbList.map(r => ({
-                id: r.id || r.SCHL_CLS_SCHLDL_ID,
-                day: r.day || r.SCHL_DAY_OF_WK || 'Monday',
-                period: r.period || r.period_label || 'Period',
-                time: r.time || `${(r.SCHL_CLS_SCHDL_FRM_DT || '08:00').substring(0, 5)} - ${(r.SCHL_CLS_SCHDL_TO_DT || '08:45').substring(0, 5)}`,
-                subject: r.subject || r.subject_name || r.SCHLDL_SUB_NM || 'Subject',
-                teacher: r.teacher || r.teacher_name || r.SCHLDL_TCHR_NM || 'Faculty Guide',
-                room: r.room || r.SCHL_BR_RM_ID || 'Classroom',
-                code: r.code || r.subject_code || 'CRS-101',
-                type: r.type || 'Lecture'
-              }))
-              setRoutines(fbMapped)
-            } else {
-              setRoutines([])
-            }
-          })
-          .catch(() => setRoutines([]))
+        setRoutines([])
       })
       .finally(() => setLoading(false))
   }, [isParent, selectedWard])
 
-  const DEFAULT_FALLBACK_ROUTINE = [
-    { id: '1', day: 'Monday', period: 'Period 1', time: '08:30 - 09:20', subject: 'Mathematics', teacher: 'Dr. John Miller', room: 'Room 201', code: 'MATH-101', type: 'Lecture' },
-    { id: '2', day: 'Monday', period: 'Period 2', time: '09:25 - 10:15', subject: 'Physics & Lab', teacher: 'Prof. Sarah Connor', room: 'Lab 102', code: 'PHY-201', type: 'Lab' },
-    { id: '3', day: 'Monday', period: 'Period 3', time: '10:30 - 11:20', subject: 'English Literature', teacher: 'Mrs. Emily Davis', room: 'Room 203', code: 'ENG-105', type: 'Lecture' },
-    { id: '4', day: 'Monday', period: 'Period 4', time: '11:25 - 12:15', subject: 'Computer Science', teacher: 'Mr. Alex Turner', room: 'CS Lab 2', code: 'CS-301', type: 'Lab' },
-    { id: '5', day: 'Monday', period: 'Period 5', time: '13:00 - 13:50', subject: 'Social Studies', teacher: 'Mr. Robert Wilson', room: 'Room 201', code: 'SOC-102', type: 'Lecture' },
-    
-    { id: '6', day: 'Tuesday', period: 'Period 1', time: '08:30 - 09:20', subject: 'Chemistry', teacher: 'Dr. Alan Vance', room: 'Chem Lab 1', code: 'CHEM-201', type: 'Lab' },
-    { id: '7', day: 'Tuesday', period: 'Period 2', time: '09:25 - 10:15', subject: 'Mathematics', teacher: 'Dr. John Miller', room: 'Room 201', code: 'MATH-101', type: 'Lecture' },
-    { id: '8', day: 'Tuesday', period: 'Period 3', time: '10:30 - 11:20', subject: 'Biology', teacher: 'Mrs. Linda Green', room: 'Bio Lab', code: 'BIO-101', type: 'Lab' },
-    { id: '9', day: 'Tuesday', period: 'Period 4', time: '11:25 - 12:15', subject: 'History & Civics', teacher: 'Mr. Robert Wilson', room: 'Room 204', code: 'HIS-101', type: 'Lecture' },
-    { id: '10', day: 'Tuesday', period: 'Period 5', time: '13:00 - 13:50', subject: 'Physical Education', teacher: 'Coach Marcus', room: 'Sports Arena', code: 'PE-100', type: 'Activity' },
-
-    { id: '11', day: 'Wednesday', period: 'Period 1', time: '08:30 - 09:20', subject: 'Computer Science', teacher: 'Mr. Alex Turner', room: 'CS Lab 2', code: 'CS-301', type: 'Lab' },
-    { id: '12', day: 'Wednesday', period: 'Period 2', time: '09:25 - 10:15', subject: 'Physics', teacher: 'Prof. Sarah Connor', room: 'Room 201', code: 'PHY-201', type: 'Lecture' },
-    { id: '13', day: 'Wednesday', period: 'Period 3', time: '10:30 - 11:20', subject: 'English Language', teacher: 'Mrs. Emily Davis', room: 'Room 203', code: 'ENG-106', type: 'Lecture' },
-    { id: '14', day: 'Wednesday', period: 'Period 4', time: '11:25 - 12:15', subject: 'Mathematics', teacher: 'Dr. John Miller', room: 'Room 201', code: 'MATH-101', type: 'Lecture' },
-
-    { id: '15', day: 'Thursday', period: 'Period 1', time: '08:30 - 09:20', subject: 'Mathematics', teacher: 'Dr. John Miller', room: 'Room 201', code: 'MATH-101', type: 'Lecture' },
-    { id: '16', day: 'Thursday', period: 'Period 2', time: '09:25 - 10:15', subject: 'Chemistry', teacher: 'Dr. Alan Vance', room: 'Room 202', code: 'CHEM-201', type: 'Lecture' },
-    { id: '17', day: 'Thursday', period: 'Period 3', time: '10:30 - 11:20', subject: 'Environmental Studies', teacher: 'Mrs. Linda Green', room: 'Room 204', code: 'EVS-101', type: 'Lecture' },
-    { id: '18', day: 'Thursday', period: 'Period 4', time: '11:25 - 12:15', subject: 'Library & Reading', teacher: 'Mrs. Katherine Hall', room: 'Central Library', code: 'LIB-100', type: 'Study' },
-
-    { id: '19', day: 'Friday', period: 'Period 1', time: '08:30 - 09:20', subject: 'Physics', teacher: 'Prof. Sarah Connor', room: 'Room 201', code: 'PHY-201', type: 'Lecture' },
-    { id: '20', day: 'Friday', period: 'Period 2', time: '09:25 - 10:15', subject: 'Biology', teacher: 'Mrs. Linda Green', room: 'Bio Lab', code: 'BIO-101', type: 'Lab' },
-    { id: '21', day: 'Friday', period: 'Period 3', time: '10:30 - 11:20', subject: 'Computer Programming', teacher: 'Mr. Alex Turner', room: 'CS Lab 2', code: 'CS-302', type: 'Lab' },
-    { id: '22', day: 'Friday', period: 'Period 4', time: '11:25 - 12:15', subject: 'Moral Science / Arts', teacher: 'Mrs. Emily Davis', room: 'Arts Studio', code: 'ART-101', type: 'Activity' },
-
-    { id: '23', day: 'Saturday', period: 'Period 1', time: '08:30 - 09:20', subject: 'Co-curricular Activity', teacher: 'Assigned Mentors', room: 'Main Auditorium', code: 'CCA-101', type: 'Activity' },
-    { id: '24', day: 'Saturday', period: 'Period 2', time: '09:25 - 10:15', subject: 'Weekly Assessment', teacher: 'Faculty Guides', room: 'Exam Hall 1', code: 'TEST-100', type: 'Assessment' }
-  ]
-
   const filteredRoutines = useMemo(() => {
-    const source = routines.length > 0 ? routines : DEFAULT_FALLBACK_ROUTINE
-    if (selectedDay === 'ALL') return source
-    const matches = source.filter(r => (r.day || '').toLowerCase() === selectedDay.toLowerCase())
-    return matches.length > 0 ? matches : source.slice(0, 4)
+    if (selectedDay === 'ALL') return routines
+    return routines.filter(r => (r.day || '').trim().toLowerCase() === selectedDay.trim().toLowerCase())
   }, [routines, selectedDay])
 
   const handlePrint = () => {
@@ -254,8 +179,14 @@ export default function DailyRoutine({ forcedRole = null }) {
               <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--clr-text, #111827)' }}>
                 {currentUser?.name || currentUser?.user_first_name || 'Enrolled Student'}
                 <span style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--clr-primary, #005A9E)', marginLeft: '10px', background: 'rgba(0, 90, 158, 0.08)', padding: '3px 10px', borderRadius: '6px' }}>
-                  {studentInfo?.className || studentInfo?.class_name || currentUser?.className || 'Class: Standard Section'}
+                  {studentInfo?.className || studentInfo?.class_name || currentUser?.className || 'Class'}
+                  {(studentInfo?.sectionName || studentInfo?.section || currentUser?.sectionName || currentUser?.section) ? ` - Section ${studentInfo?.sectionName || studentInfo?.section || currentUser?.sectionName || currentUser?.section}` : ''}
                 </span>
+                {(studentInfo?.branchName || studentInfo?.branch_name || currentUser?.branchName || currentUser?.branch_name) && (
+                  <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#059669', marginLeft: '8px', background: 'rgba(16, 185, 129, 0.08)', padding: '3px 10px', borderRadius: '6px' }}>
+                    Branch: {studentInfo?.branchName || studentInfo?.branch_name || currentUser?.branchName || currentUser?.branch_name}
+                  </span>
+                )}
                 {(studentInfo?.rollNo || studentInfo?.STU_ROLL_NO || currentUser?.roll_no) && (
                   <span style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--clr-text-muted, #6b7280)', marginLeft: '8px' }}>
                     · Roll No: {studentInfo?.rollNo || studentInfo?.STU_ROLL_NO || currentUser?.roll_no}
@@ -299,9 +230,15 @@ export default function DailyRoutine({ forcedRole = null }) {
               </div>
               <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--clr-text, #111827)' }}>
                 {selectedWardObj?.STU_NM || selectedWardObj?.name || 'Selected Student'} 
-                <span style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--clr-text-muted, #6b7280)', marginLeft: '8px' }}>
-                  ({selectedWardObj?.className || selectedWardObj?.grade || 'Class Section'})
+                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--clr-primary, #005A9E)', marginLeft: '8px' }}>
+                  ({selectedWardObj?.className || 'Class'}
+                  {selectedWardObj?.sectionName ? ` - Section ${selectedWardObj.sectionName}` : ''})
                 </span>
+                {selectedWardObj?.branchName && (
+                  <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#059669', marginLeft: '8px', background: 'rgba(16, 185, 129, 0.08)', padding: '2px 8px', borderRadius: '4px' }}>
+                    {selectedWardObj.branchName}
+                  </span>
+                )}
               </div>
             </div>
           </div>

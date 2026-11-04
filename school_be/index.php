@@ -223,7 +223,7 @@ if (strpos($routePath, '/api/auth/') === 0) {
     // Extract ID from path if present (e.g., /api/student/parents/123)
     $id = null;
     $pathParts = explode('/', $routePath);
-    $resources = ['parents', 'students', 'schedules', 'attendance', 'wards', 'routine', 'class-completion', 'subject-attendance', 'fees-report'];
+    $resources = ['parents', 'students', 'schedules', 'attendance', 'wards', 'routine', 'class-completion', 'subject-attendance', 'fees-report', 'profile'];
     if (count($pathParts) > 3) {
         $lastPart = end($pathParts);
         $prevPart = $pathParts[count($pathParts) - 2];

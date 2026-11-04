@@ -44,7 +44,7 @@ function normaliseStudent(s) {
     branch_id: branchId,
     branchName: s.branchName || '',
     gender: s.STU_GENDER || s.gender || 'M',
-    guardian: s.guardianName || s.PRNT_NM || (parentList.find(p => String(p.PRNT_ID || p.id) === String(s.STU_PRNT_ID))?.PRNT_NM) || s.STU_PRNT_ID || 'N/A',
+    guardian: s.guardianName || s.PRNT_NM || s.STU_PRNT_ID || 'N/A',
     guardianName: s.guardianName || s.PRNT_NM || '',
     guardianPhone: s.guardianPhone || s.PRNT_CONTACTNO || '',
     guardianEmail: s.guardianEmail || s.PRNT_EMAILID || '',

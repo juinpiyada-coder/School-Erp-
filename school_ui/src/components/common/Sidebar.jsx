@@ -491,7 +491,7 @@ export default function Sidebar() {
         items: section.items.filter((item) => item.label.toLowerCase().includes(q)),
       }))
       .filter((section) => section.items.length > 0)
-  }, [dbNavSections, menuSearch]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [dbNavSections, menuSearch])
 
   return (
     <>

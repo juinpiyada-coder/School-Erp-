@@ -24,6 +24,14 @@ function routeAttendanceApi($uriPath, $method, $id, $data) {
             return true;
 
         // --- Teacher Attendance ---
+        case '/api/attendance/teachers/me':
+        case '/api/attendance/teacher/me':
+            if ($method !== 'GET') Response::error('Method not allowed', 405);
+            require_once dirname(__DIR__, 2) . '/Modules/Staff/StaffController.php';
+            $staffController = new StaffController();
+            $staffController->handleAttendance('GET', 'me', $data);
+            return true;
+
         case '/api/attendance/teacher/checkin':
             if ($method !== 'POST') Response::error('Method not allowed', 405);
             $teacherId = $data['teacher_id'] ?? ($_GET['teacher_id'] ?? null);
