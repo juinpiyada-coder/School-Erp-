@@ -587,9 +587,27 @@ export default function Attendance() {
 
                     {/* Classes Conducted */}
                     <td>
-                      <span className="badge badge-success" style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
-                        {r.classesConducted ?? 0} / {r.totalClasses ?? 0}
-                      </span>
+                      {(() => {
+                        const total = Number(r.totalClasses) || 0;
+                        const conducted = Number(r.classesConducted) || 0;
+                        const isAll = total > 0 && conducted >= total;
+                        const isPart = conducted > 0 && conducted < total;
+                        return (
+                          <span
+                            className="badge"
+                            style={{
+                              fontVariantNumeric: 'tabular-nums',
+                              fontWeight: 600,
+                              background: isAll ? 'rgba(16, 185, 129, 0.15)' : isPart ? 'rgba(245, 158, 11, 0.15)' : 'rgba(107, 114, 128, 0.12)',
+                              color: isAll ? '#059669' : isPart ? '#d97706' : '#6b7280',
+                              border: '1px solid ' + (isAll ? 'rgba(16, 185, 129, 0.3)' : isPart ? 'rgba(245, 158, 11, 0.3)' : 'rgba(107, 114, 128, 0.2)')
+                            }}
+                            title={conducted + ' of ' + total + ' periods conducted for this date'}
+                          >
+                            {conducted} / {total}
+                          </span>
+                        );
+                      })()}
                     </td>
 
                     {/* Status */}

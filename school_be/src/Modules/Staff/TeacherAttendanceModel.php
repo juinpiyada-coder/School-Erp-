@@ -46,16 +46,37 @@ class TeacherAttendanceModel {
                          THEN CONCAT(att.TCHR_TOTAL_HRS, ' hrs')
                          ELSE '—'
                        END as duration,
-                       (
-                         SELECT COUNT(*) 
-                         FROM SCHL_CLS_SCHLDL sch 
-                         WHERE sch.SCHL_BR_TCHR_ID = tc.BR_TCHR_ID
+                       COALESCE(
+                         NULLIF((
+                           SELECT COUNT(*) 
+                           FROM SCHL_CLS_SCHLDL sch 
+                           WHERE sch.SCHL_BR_TCHR_ID = tc.BR_TCHR_ID
+                             AND (
+                               sch.SCHL_DAY_OF_WK IS NULL 
+                               OR sch.SCHL_DAY_OF_WK = '' 
+                               OR LOWER(TRIM(sch.SCHL_DAY_OF_WK)) = LOWER(DAYNAME(:date_day))
+                             )
+                         ), 0),
+                         (
+                           SELECT COUNT(*) 
+                           FROM SCHL_CLS_SCHLDL sch 
+                           WHERE sch.SCHL_BR_TCHR_ID = tc.BR_TCHR_ID
+                         ),
+                         0
                        ) as totalClasses,
                        (
                          SELECT COUNT(DISTINCT a.STU_CLS_SCHLDL_ID) 
                          FROM SCHL_STU_ATT a 
-                         WHERE a.STU_TCHR_ID = tc.BR_TCHR_ID 
-                           AND a.STU_ATT_DT = :date2
+                         WHERE (
+                           a.STU_TCHR_ID = tc.BR_TCHR_ID 
+                           OR a.STU_CLS_SCHLDL_ID IN (
+                             SELECT sch2.SCHL_CLS_SCHLDL_ID 
+                             FROM SCHL_CLS_SCHLDL sch2 
+                             WHERE sch2.SCHL_BR_TCHR_ID = tc.BR_TCHR_ID
+                           )
+                         )
+                         AND a.STU_ATT_DT = :date2
+                         AND (a.STU_CLS_SCHLDL_ID IS NOT NULL AND a.STU_CLS_SCHLDL_ID != '')
                        ) as classesConducted,
                        tc.BR_TCHR_NM as name
                 FROM SCHL_BR_TCHR tc 
@@ -73,6 +94,7 @@ class TeacherAttendanceModel {
             'date2' => $date,
             'date3' => $date,
             'date4' => $date,
+            'date_day' => $date,
         ];
 
         if ($user) {
