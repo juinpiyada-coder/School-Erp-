@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useRealtimeSubscription, useRealtime } from '../../contexts/RealtimeContext'
 import { 
   FaBell, 
   FaBullhorn, 
@@ -83,12 +84,8 @@ export default function Notifications() {
   const isParent = userRole === 'R_PARENT'
   const canPublishBroadcast = isSuperAdmin || isSchoolAdmin || isBranchAdmin || isTeacher
 
-  useEffect(() => {
-    fetchNotifications()
-  }, [categoryFilter, page])
-
-  const fetchNotifications = async () => {
-    setLoading(true)
+  const fetchNotifications = useCallback(async (isSilent = false) => {
+    if (!isSilent) setLoading(true)
     try {
       const params = {
         page,
@@ -120,12 +117,24 @@ export default function Notifications() {
         setSelectedNotif(null)
       }
     } catch (err) {
-      console.error('Failed to load notifications:', err)
-      toast.error(err?.response?.data?.message || 'Could not load notifications')
+      if (!isSilent) {
+        console.error('Failed to load notifications:', err)
+        toast.error(err?.response?.data?.message || 'Could not load notifications')
+      }
     } finally {
-      setLoading(false)
+      if (!isSilent) setLoading(false)
     }
-  }
+  }, [categoryFilter, page, selectedNotif])
+
+  // Real-time subscription & heartbeat for notifications
+  useRealtimeSubscription('notifications', () => fetchNotifications(true))
+  useRealtimeSubscription('*', () => fetchNotifications(true))
+
+  useEffect(() => {
+    fetchNotifications()
+    const timer = setInterval(() => fetchNotifications(true), 20000)
+    return () => clearInterval(timer)
+  }, [fetchNotifications])
 
   const fetchNotificationDetails = async (id, showSpinner = true) => {
     if (showSpinner) setDetailsLoading(true)

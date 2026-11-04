@@ -10,6 +10,7 @@ import { ToastContainer, Zoom } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import { WhitelabelProvider } from './contexts/WhitelabelContext'
 import { ThemeProvider } from './contexts/ThemeContext'
+import { RealtimeProvider } from './contexts/RealtimeContext'
 
 // Safe lazy import wrapper: automatically reloads once if a stale chunk hash fails after a deployment
 function lazyRetry(componentImport) {
@@ -111,90 +112,92 @@ function AppShell() {
 export default function App() {
   return (
     <ThemeProvider>
-      <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <RouteProgress />
-        <ErrorBoundary>
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/login" element={<SuspenseWrapper><Login /></SuspenseWrapper>} />
-            <Route path="/unauthorized" element={<SuspenseWrapper><Unauthorized /></SuspenseWrapper>} />
-            <Route path="/403" element={<Navigate to="/unauthorized" replace />} />
+      <RealtimeProvider>
+        <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <RouteProgress />
+          <ErrorBoundary>
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/login" element={<SuspenseWrapper><Login /></SuspenseWrapper>} />
+              <Route path="/unauthorized" element={<SuspenseWrapper><Unauthorized /></SuspenseWrapper>} />
+              <Route path="/403" element={<Navigate to="/unauthorized" replace />} />
 
-            {/* Authenticated Application Shell */}
-            <Route element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
-              {/* Dashboard */}
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/dashboard" element={<Dashboard />} />
+              {/* Authenticated Application Shell */}
+              <Route element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
+                {/* Dashboard */}
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/dashboard" element={<Dashboard />} />
 
-              {/* User Management */}
-              <Route path="/user/roles" element={<Roles />} />
-              <Route path="/user/role-links" element={<RoleLinks />} />
-              <Route path="/user/logins" element={<UserLogins />} />
+                {/* User Management */}
+                <Route path="/user/roles" element={<Roles />} />
+                <Route path="/user/role-links" element={<RoleLinks />} />
+                <Route path="/user/logins" element={<UserLogins />} />
 
-              {/* School Management */}
-              <Route path="/school/details" element={<SchoolDetails />} />
-              <Route path="/school/branches" element={<Branches />} />
-              <Route path="/school/rooms" element={<Rooms />} />
-              <Route path="/school/classes" element={<Classes />} />
-              <Route path="/school/matrix" element={<ClassMatrix />} />
-              <Route path="/school/matrices" element={<ClassMatrix />} />
-              <Route path="/school/sessions" element={<ClassSessions />} />
-              <Route path="/school/subjects" element={<Subjects />} />
+                {/* School Management */}
+                <Route path="/school/details" element={<SchoolDetails />} />
+                <Route path="/school/branches" element={<Branches />} />
+                <Route path="/school/rooms" element={<Rooms />} />
+                <Route path="/school/classes" element={<Classes />} />
+                <Route path="/school/matrix" element={<ClassMatrix />} />
+                <Route path="/school/matrices" element={<ClassMatrix />} />
+                <Route path="/school/sessions" element={<ClassSessions />} />
+                <Route path="/school/subjects" element={<Subjects />} />
 
-              {/* Teacher Management */}
-              <Route path="/teacher/teachers" element={<Teachers />} />
-              <Route path="/teacher/mapping" element={<SubjectMapping />} />
+                {/* Teacher Management */}
+                <Route path="/teacher/teachers" element={<Teachers />} />
+                <Route path="/teacher/mapping" element={<SubjectMapping />} />
 
-              {/* Parent & Student Management (Admin) */}
-              <Route path="/parent/parents" element={<Parents />} />
-              <Route path="/student/students" element={<Students />} />
+                {/* Parent & Student Management (Admin) */}
+                <Route path="/parent/parents" element={<Parents />} />
+                <Route path="/student/students" element={<Students />} />
 
-              {/* Student Portal Dedicated Modules */}
-              <Route path="/student/routine" element={<DailyRoutine forcedRole="STUDENT" />} />
-              <Route path="/student/class-completion" element={<SubjectClassCompletion forcedRole="STUDENT" />} />
-              <Route path="/student/attendance-report" element={<SubjectAttendanceReport forcedRole="STUDENT" />} />
-              <Route path="/student/fees-report" element={<FeesDuePaidReport forcedRole="STUDENT" />} />
+                {/* Student Portal Dedicated Modules */}
+                <Route path="/student/routine" element={<DailyRoutine forcedRole="STUDENT" />} />
+                <Route path="/student/class-completion" element={<SubjectClassCompletion forcedRole="STUDENT" />} />
+                <Route path="/student/attendance-report" element={<SubjectAttendanceReport forcedRole="STUDENT" />} />
+                <Route path="/student/fees-report" element={<FeesDuePaidReport forcedRole="STUDENT" />} />
 
-              {/* Direct Aliases and Compatibility Routes */}
-              <Route path="/routine" element={<DailyRoutine />} />
-              <Route path="/daily-routine" element={<DailyRoutine />} />
-              <Route path="/attendance-report" element={<SubjectAttendanceReport />} />
-              <Route path="/class-completion" element={<SubjectClassCompletion />} />
-              <Route path="/fees-report" element={<FeesDuePaidReport />} />
-              <Route path="/attendance" element={<StudentAttendance />} />
-              <Route path="/schedule" element={<ClassSchedule />} />
-              <Route path="/student-attendance" element={<StudentAttendance />} />
-              <Route path="/parents" element={<Parents />} />
+                {/* Direct Aliases and Compatibility Routes */}
+                <Route path="/routine" element={<DailyRoutine />} />
+                <Route path="/daily-routine" element={<DailyRoutine />} />
+                <Route path="/attendance-report" element={<SubjectAttendanceReport />} />
+                <Route path="/class-completion" element={<SubjectClassCompletion />} />
+                <Route path="/fees-report" element={<FeesDuePaidReport />} />
+                <Route path="/attendance" element={<StudentAttendance />} />
+                <Route path="/schedule" element={<ClassSchedule />} />
+                <Route path="/student-attendance" element={<StudentAttendance />} />
+                <Route path="/parents" element={<Parents />} />
 
-              {/* Parent Portal Dedicated Modules */}
-              <Route path="/parent/routine" element={<DailyRoutine forcedRole="PARENT" />} />
-              <Route path="/parent/class-completion" element={<SubjectClassCompletion forcedRole="PARENT" />} />
-              <Route path="/parent/attendance-report" element={<SubjectAttendanceReport forcedRole="PARENT" />} />
-              <Route path="/parent/fees-report" element={<FeesDuePaidReport forcedRole="PARENT" />} />
+                {/* Parent Portal Dedicated Modules */}
+                <Route path="/parent/routine" element={<DailyRoutine forcedRole="PARENT" />} />
+                <Route path="/parent/class-completion" element={<SubjectClassCompletion forcedRole="PARENT" />} />
+                <Route path="/parent/attendance-report" element={<SubjectAttendanceReport forcedRole="PARENT" />} />
+                <Route path="/parent/fees-report" element={<FeesDuePaidReport forcedRole="PARENT" />} />
 
-              {/* Academic & Attendance Management */}
-              <Route path="/academic/schedule" element={<ClassSchedule />} />
-              <Route path="/academic/teacher-attendance" element={<TeacherAttendance />} />
-              <Route path="/academic/student-attendance" element={<StudentAttendance />} />
+                {/* Academic & Attendance Management */}
+                <Route path="/academic/schedule" element={<ClassSchedule />} />
+                <Route path="/academic/teacher-attendance" element={<TeacherAttendance />} />
+                <Route path="/academic/student-attendance" element={<StudentAttendance />} />
 
-              {/* System */}
-              <Route path="/reports" element={<Reports />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/notifications" element={<Notifications />} />
+                {/* System */}
+                <Route path="/reports" element={<Reports />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/notifications" element={<Notifications />} />
 
-              {/* Aliases & Redirects */}
-              <Route path="/dashboards" element={<Navigate to="/" replace />} />
-              <Route path="/home" element={<Navigate to="/" replace />} />
-              <Route path="/overview" element={<Navigate to="/" replace />} />
-            </Route>
+                {/* Aliases & Redirects */}
+                <Route path="/dashboards" element={<Navigate to="/" replace />} />
+                <Route path="/home" element={<Navigate to="/" replace />} />
+                <Route path="/overview" element={<Navigate to="/" replace />} />
+              </Route>
 
-            {/* Catch-all */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </ErrorBoundary>
-        <SessionTimeout />
-        <ToastContainer position="top-right" autoClose={3000} theme="colored" transition={Zoom} />
-      </Router>
+              {/* Catch-all */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </ErrorBoundary>
+          <SessionTimeout />
+          <ToastContainer position="top-right" autoClose={3000} theme="colored" transition={Zoom} />
+        </Router>
+      </RealtimeProvider>
     </ThemeProvider>
   )
 }

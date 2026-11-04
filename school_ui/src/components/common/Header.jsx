@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { FaBell, FaCommentAlt, FaChevronDown, FaSignOutAlt, FaUserCog, FaEnvelope, FaBars } from 'react-icons/fa'
 import { toast } from 'react-toastify'
+import { useRealtimeSubscription, useRealtime } from '../../contexts/RealtimeContext'
 
 const ROUTE_META = {
   '/':                              { title: 'Dashboard',               breadcrumb: ['Home'] },
@@ -74,23 +75,31 @@ export default function Header() {
   const [unreadCount, setUnreadCount] = useState(0)
   const badgeCount = unreadCount > 99 ? '99+' : unreadCount
 
+  const fetchHeaderNotifs = useCallback(async () => {
+    try {
+      const token = sessionStorage.getItem('e_school_access_token')
+      if (!token) return
+      const res = await fetch((import.meta.env.VITE_API_BASE_URL || '/api') + '/notifications?limit=5', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      const data = await res.json()
+      if (data?.data) {
+        setLiveNotifs(data.data)
+        setUnreadCount(data?.pagination?.total || data.data.length || 0)
+      }
+    } catch (err) {}
+  }, [])
+
+  // Live real-time subscription for notifications
+  useRealtimeSubscription('notifications', fetchHeaderNotifs)
+  useRealtimeSubscription('*', fetchHeaderNotifs)
+
   useEffect(() => {
-    const fetchHeaderNotifs = async () => {
-      try {
-        const token = sessionStorage.getItem('e_school_access_token')
-        if (!token) return
-        const res = await fetch((import.meta.env.VITE_API_BASE_URL || '/api') + '/notifications?limit=5', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
-        const data = await res.json()
-        if (data?.data) {
-          setLiveNotifs(data.data)
-          setUnreadCount(data?.pagination?.total || data.data.length || 0)
-        }
-      } catch (err) {}
-    }
     fetchHeaderNotifs()
-  }, [pathname])
+    // 25-second background real-time heartbeat polling
+    const interval = setInterval(fetchHeaderNotifs, 25000)
+    return () => clearInterval(interval)
+  }, [fetchHeaderNotifs, pathname])
 
   // Close dropdowns on outside click / Esc
   useEffect(() => {

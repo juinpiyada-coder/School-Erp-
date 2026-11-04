@@ -1,7 +1,8 @@
 import axios from '../../lib/axios'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useWhitelabel } from '../../contexts/WhitelabelContext'
+import { useRealtimeSubscription } from '../../contexts/RealtimeContext'
 import { motion } from 'framer-motion'
 import {
   FaCalendarAlt,
@@ -94,66 +95,68 @@ export default function StudentDashboard() {
   })
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    let cancelled = false
+  const loadData = useCallback(async () => {
     const api = import.meta.env.VITE_API_BASE_URL
+    try {
+      const [rRes, aRes, pRes] = await Promise.allSettled([
+        axios.get(`${api}/student/routine?date=${selectedDate}`),
+        axios.get(`${api}/student/subject-attendance`),
+        axios.get(`${api}/student/profile`)
+      ])
 
-    const load = async () => {
-      setLoading(true)
-      try {
-        const [rRes, aRes, pRes] = await Promise.allSettled([
-          axios.get(`${api}/student/routine?date=${selectedDate}`),
-          axios.get(`${api}/student/subject-attendance`),
-          axios.get(`${api}/student/profile`)
-        ])
-
-        if (pRes.status === 'fulfilled') {
-          const pData = pRes.value?.data?.data || pRes.value?.data || {}
-          setStudentInfo(pData)
-        }
-
-        let routineItems = []
-        if (rRes.status === 'fulfilled') {
-          const payload = rRes.value?.data
-          const items = Array.isArray(payload) ? payload : (payload?.data || payload?.routines || [])
-          routineItems = items.map(mapRoutineItem)
-          // Number periods per day in timetable order
-          const counters = {}
-          routineItems = routineItems.map((it) => {
-            const k = String(it.day || '').trim().toLowerCase()
-            counters[k] = (counters[k] || 0) + 1
-            return { ...it, period: it.period && !it.period.startsWith('Period SCH_') ? it.period : `Period ${counters[k]}` }
-          })
-        }
-
-        let totals = { total: 0, present: 0, absent: 0, pct: null }
-        if (aRes.status === 'fulfilled') {
-          const data = aRes.value?.data?.data || aRes.value?.data || {}
-          const summary = Array.isArray(data.summary) ? data.summary : []
-          const total = summary.reduce((acc, s) => acc + (Number(s.totalSessions) || 0), 0)
-          const present = summary.reduce((acc, s) => acc + (Number(s.presentSessions) || 0), 0)
-          const absent = summary.reduce((acc, s) => acc + (Number(s.absentSessions) || 0), 0)
-          totals = {
-            total,
-            present,
-            absent,
-            pct: total > 0 ? Math.round(((present * 100) / total) * 10) / 10 : null,
-          }
-        }
-
-        if (!cancelled) {
-          setRoutines(routineItems)
-          setAttendance(totals)
-          setLoading(false)
-        }
-      } catch (e) {
-        if (!cancelled) setLoading(false)
+      if (pRes.status === 'fulfilled') {
+        const pData = pRes.value?.data?.data || pRes.value?.data || {}
+        setStudentInfo(pData)
       }
-    }
 
-    load()
-    return () => { cancelled = true }
+      let routineItems = []
+      if (rRes.status === 'fulfilled') {
+        const payload = rRes.value?.data
+        const items = Array.isArray(payload) ? payload : (payload?.data || payload?.routines || [])
+        routineItems = items.map(mapRoutineItem)
+        // Number periods per day in timetable order
+        const counters = {}
+        routineItems = routineItems.map((it) => {
+          const k = String(it.day || '').trim().toLowerCase()
+          counters[k] = (counters[k] || 0) + 1
+          return { ...it, period: it.period && !it.period.startsWith('Period SCH_') ? it.period : `Period ${counters[k]}` }
+        })
+      }
+
+      let totals = { total: 0, present: 0, absent: 0, pct: null }
+      if (aRes.status === 'fulfilled') {
+        const data = aRes.value?.data?.data || aRes.value?.data || {}
+        const summary = Array.isArray(data.summary) ? data.summary : []
+        const total = summary.reduce((acc, s) => acc + (Number(s.totalSessions) || 0), 0)
+        const present = summary.reduce((acc, s) => acc + (Number(s.presentSessions) || 0), 0)
+        const absent = summary.reduce((acc, s) => acc + (Number(s.absentSessions) || 0), 0)
+        totals = {
+          total,
+          present,
+          absent,
+          pct: total > 0 ? Math.round(((present * 100) / total) * 10) / 10 : null,
+        }
+      }
+
+      setRoutines(routineItems)
+      setAttendance(totals)
+      setLoading(false)
+    } catch (e) {
+      setLoading(false)
+    }
   }, [selectedDate])
+
+  // Real-time listener: automatically re-fetches when attendance or routines change
+  useRealtimeSubscription('routine', loadData)
+  useRealtimeSubscription('attendance', loadData)
+  useRealtimeSubscription('*', loadData)
+
+  useEffect(() => {
+    loadData()
+    // Heartbeat sync every 30 seconds
+    const timer = setInterval(loadData, 30000)
+    return () => clearInterval(timer)
+  }, [loadData])
 
   const filteredRoutines = useMemo(() => {
     if (selectedDay === 'ALL') return routines

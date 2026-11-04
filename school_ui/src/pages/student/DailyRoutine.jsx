@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { motion } from 'framer-motion'
+import { useRealtimeSubscription } from '../../contexts/RealtimeContext'
 import {
   FaCalendarAlt,
   FaClock,
@@ -70,7 +71,7 @@ export default function DailyRoutine({ forcedRole = null }) {
   }, [isParent])
 
   // Load routine data
-  useEffect(() => {
+  const fetchRoutines = useCallback(() => {
     setLoading(true)
     const endpoint = isParent && selectedWard 
       ? `${import.meta.env.VITE_API_BASE_URL}/student/routine?student_id=${selectedWard}`
@@ -101,6 +102,16 @@ export default function DailyRoutine({ forcedRole = null }) {
       })
       .finally(() => setLoading(false))
   }, [isParent, selectedWard])
+
+  useRealtimeSubscription('routine', fetchRoutines)
+  useRealtimeSubscription('*', fetchRoutines)
+
+  useEffect(() => {
+    fetchRoutines()
+    // Heartbeat auto-sync every 30 seconds
+    const interval = setInterval(fetchRoutines, 30000)
+    return () => clearInterval(interval)
+  }, [fetchRoutines])
 
   const filteredRoutines = useMemo(() => {
     if (selectedDay === 'ALL') return routines
