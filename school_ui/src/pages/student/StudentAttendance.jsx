@@ -278,6 +278,19 @@ export default function StudentAttendance() {
           rollNumber: s.STU_ROLL_NO || s.STU_AADHAR || s.rollNumber || 'N/A'
         }))
 
+        // If no students matched the currently selected class but the backend did return
+        // students (e.g. for a teacher whose assigned class differs), auto-select the
+        // class of the first returned student so the roster is never empty.
+        if (filteredList.length === 0 && stuItems.length > 0) {
+          const firstStu = stuItems[0]
+          const firstClassId = firstStu.class_id || firstStu.STU_BR_CLASS_ID || firstStu.stu_br_class_id || firstStu.class_session_id || firstStu.SCHL_BR_CLS_ID
+          if (firstClassId && String(firstClassId) !== String(selectedClass)) {
+            setSelectedClass(String(firstClassId))
+            setLoading(false)
+            return
+          }
+        }
+
         setStudents(filteredList)
 
         // Populate draft attendance matching selected Date and optional Period Routine

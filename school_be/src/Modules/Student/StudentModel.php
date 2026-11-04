@@ -81,7 +81,7 @@ class StudentModel {
                 $params[] = $branchId;
                 $params[] = $branchId;
             } elseif ($userRole === 'R_TEACHER' || $userRole === 'TEACHER' || strpos($userRole, 'TEACHER') !== false) {
-                $userId = $user['userId'] ?? $user['user_id'] ?? '';
+                $userId = $user['teacher_id'] ?? $user['teacherId'] ?? $user['userId'] ?? $user['user_id'] ?? '';
                 $userEmail = $user['email'] ?? $user['user_email_id'] ?? '';
                 $sql .= " AND COALESCE(c.SCHL_BR_CLS_ID, sess.SCHL_BR_CLASS_SEC_SESS_CLASS, s.STU_BR_CLASS_ID) IN (
                     SELECT tchr.BR_TCHR_ASSIGNED_CLASS_ID 
@@ -155,7 +155,7 @@ class StudentModel {
                 $params[] = $branchId;
                 $params[] = $branchId;
             } elseif ($userRole === 'R_TEACHER' || $userRole === 'TEACHER' || strpos($userRole, 'TEACHER') !== false) {
-                $userId = $user['userId'] ?? $user['user_id'] ?? '';
+                $userId = $user['teacher_id'] ?? $user['teacherId'] ?? $user['userId'] ?? $user['user_id'] ?? '';
                 $userEmail = $user['email'] ?? $user['user_email_id'] ?? '';
                 $sql .= " AND COALESCE(c.SCHL_BR_CLS_ID, sess.SCHL_BR_CLASS_SEC_SESS_CLASS, s.STU_BR_CLASS_ID) IN (
                     SELECT tchr.BR_TCHR_ASSIGNED_CLASS_ID 

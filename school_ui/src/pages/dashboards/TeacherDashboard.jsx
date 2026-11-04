@@ -200,11 +200,11 @@ export default function TeacherDashboard() {
           <span className="metric-delta metric-delta-neutral">Assigned to you</span>
         </motion.div>
 
-        <motion.div whileHover={{ y: -4 }} className="glass-panel metric-card">
+        <motion.div whileHover={{ y: -4 }} className="glass-panel metric-card" onClick={() => navigate('/academic/student-attendance')} style={{ cursor: 'pointer' }}>
           <div className="metric-icon-wrap metric-icon-orange"><FaChartBar /></div>
           <div className="metric-label">Daily Attendance</div>
           <div className="metric-value">{metrics.daily_attendance_avg || 0}%</div>
-          <span className="metric-delta metric-delta-neutral">Last 7 days avg</span>
+          <span className="metric-delta metric-delta-neutral">Mark Attendance →</span>
         </motion.div>
 
         <motion.div whileHover={{ y: -4 }} className="glass-panel metric-card">
@@ -304,7 +304,23 @@ export default function TeacherDashboard() {
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        onClick={() => navigate('/academic/student-attendance')}
+                        style={{
+                          padding: '4px 10px',
+                          borderRadius: '16px',
+                          border: 'none',
+                          background: 'var(--clr-primary)',
+                          color: '#fff',
+                          fontSize: '0.72rem',
+                          fontWeight: 600,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Mark Attendance
+                      </button>
                       <span
                         style={{
                           fontSize: '0.75rem',

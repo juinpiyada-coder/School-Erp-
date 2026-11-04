@@ -55,13 +55,15 @@ export default function Header() {
   const meta = ROUTE_META[pathname] ?? { title: null, breadcrumb: [] }
 
   const getHeaderTitle = () => {
-    if (meta.title && meta.title !== 'E-School Admin') {
-      return meta.title
-    }
     const branchName = userData?.branch_name || userData?.SCHL_BR_NM || userData?.branchName
     const schoolName = userData?.school_name || userData?.schl_mn_nm || userData?.center_name || userData?.schoolName
+    const campusAffiliation = branchName ? `${branchName}${schoolName ? ` · ${schoolName}` : ''}` : ''
+
+    if (meta.title && meta.title !== 'E-School Admin') {
+      return campusAffiliation ? `${campusAffiliation} — ${meta.title}` : meta.title
+    }
     if (branchName) {
-      return `${branchName}${schoolName ? ` · ${schoolName}` : ''}`
+      return campusAffiliation
     }
     return schoolName || 'Student Portal'
   }

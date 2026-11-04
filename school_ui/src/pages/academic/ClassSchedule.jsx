@@ -136,17 +136,31 @@ export default function ClassSchedule() {
       ])
       
       const clsList = Array.isArray(clsRes.data) ? clsRes.data : clsRes.data?.data || []
-      setClasses(clsList.map(c => ({
+      const branchList = Array.isArray(branchRes.data) ? branchRes.data : branchRes.data?.data || []
+
+      // Identify teacher's assigned branch if user is a teacher
+      const u = JSON.parse(sessionStorage.getItem('e_school_user') || '{}')
+      const teacherBranchId = u?.branch_id || u?.user_branch_id || u?.SCHL_BR_ID || ''
+
+      const mappedClasses = clsList.map(c => ({
         ...c,
         branchId: c.SCHL_BR_CENT_ID || c.schl_br_cent_id || '',
         matrixId: c.SCHL_BR_MAT || c.schl_br_mat || ''
-      })))
+      }))
+      setClasses(mappedClasses)
       
-      const branchList = Array.isArray(branchRes.data) ? branchRes.data : branchRes.data?.data || []
-      setBranches(branchList.map(b => ({
+      const mappedBranches = branchList.map(b => ({
         id: b.SCHL_BR_ID || b.id,
         name: b.SCHL_BR_NM || b.name || 'Unknown'
-      })))
+      }))
+      setBranches(mappedBranches)
+
+      // Auto-select the teacher's branch if not yet set
+      if (teacherBranchId && (!selectedBranch || selectedBranch === '')) {
+        setSelectedBranch(String(teacherBranchId))
+      } else if (mappedBranches.length === 1 && !selectedBranch) {
+        setSelectedBranch(String(mappedBranches[0].id))
+      }
 
       const matList = Array.isArray(matRes.data) ? matRes.data : matRes.data?.data || []
       setMatrices(matList)
@@ -155,8 +169,12 @@ export default function ClassSchedule() {
       setRooms(Array.isArray(rmRes.data) ? rmRes.data : rmRes.data?.data || [])
       setSubjects(Array.isArray(subRes.data) ? subRes.data : subRes.data?.data || [])
 
-      if (clsList.length > 0) {
-        setSelectedClass(clsList[0].SCHL_BR_CLS_ID || clsList[0].schl_br_cls_id || clsList[0].id || '')
+      if (mappedClasses.length > 0) {
+        const matchingClass = teacherBranchId 
+          ? mappedClasses.find(c => String(c.branchId) === String(teacherBranchId)) 
+          : mappedClasses[0]
+        const fallbackClass = matchingClass || mappedClasses[0]
+        setSelectedClass(fallbackClass.SCHL_BR_CLS_ID || fallbackClass.schl_br_cls_id || fallbackClass.id || '')
       }
     } catch (err) {
       toast.error('Failed to load lookup data')

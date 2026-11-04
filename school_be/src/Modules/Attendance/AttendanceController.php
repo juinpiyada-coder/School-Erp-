@@ -48,12 +48,24 @@ class AttendanceController {
     }
 
     private function resolveTeacherIdFromJwt($jwtUser) {
-        $userId = $jwtUser['userId'] ?? null;
-        if (!$userId) return null;
-        $stmt = $this->db->prepare("SELECT BR_TCHR_ID FROM SCHL_BR_TCHR WHERE BR_TCHR_ID = ?");
-        $stmt->execute([$userId]);
+        // Prefer the resolved teacher id carried in the JWT (set at login).
+        $teacherId = $jwtUser['teacher_id'] ?? $jwtUser['teacherId'] ?? null;
+        if ($teacherId) {
+            $stmt = $this->db->prepare("SELECT BR_TCHR_ID FROM SCHL_BR_TCHR WHERE BR_TCHR_ID = ? LIMIT 1");
+            $stmt->execute([$teacherId]);
+            $found = $stmt->fetchColumn();
+            if ($found) return $found;
+        }
+
+        $userId = $jwtUser['userId'] ?? $jwtUser['user_id'] ?? $jwtUser['id'] ?? null;
+        $email  = $jwtUser['email'] ?? $jwtUser['user_email_id'] ?? null;
+
+        $stmt = $this->db->prepare("SELECT BR_TCHR_ID FROM SCHL_BR_TCHR WHERE BR_TCHR_ID = ? OR (BR_TCHR_EMAI_ID = ? AND BR_TCHR_EMAI_ID IS NOT NULL AND BR_TCHR_EMAI_ID != '') LIMIT 1");
+        $stmt->execute([$userId, $email]);
         $found = $stmt->fetchColumn();
-        return $found ?: null;
+        if ($found) return $found;
+
+        return $teacherId ?: $userId;
     }
 
     private function verifyTeacherForSchedule($scheduleId, $loggedInTeacherId) {

@@ -59,6 +59,21 @@ class BranchModel {
                         $params[] = $bid;
                     }
                 }
+            } elseif ($roleId === 'R_TEACHER' || $roleId === 'TEACHER' || strpos($roleId, 'TEACHER') !== false) {
+                $userEmail = $user['email'] ?? $user['user_email_id'] ?? '';
+                $userId = $user['userId'] ?? $user['user_id'] ?? $user['id'] ?? '';
+                $branchId = $user['branch_id'] ?? $user['user_branch_id'] ?? null;
+                $sql .= " AND (SCHL_BR_ID IN (
+                    SELECT t.BR_TCHR_BR_ID FROM SCHL_BR_TCHR t 
+                    WHERE (t.BR_TCHR_ID = ? OR (t.BR_TCHR_EMAI_ID = ? AND ? != ''))
+                      AND t.BR_TCHR_BR_ID IS NOT NULL AND t.BR_TCHR_BR_ID != ''
+                )" . ($branchId ? " OR SCHL_BR_ID = ?" : "") . ")";
+                $params[] = $userId;
+                $params[] = $userEmail;
+                $params[] = $userEmail;
+                if ($branchId) {
+                    $params[] = $branchId;
+                }
             }
         }
         $sql .= " ORDER BY SCHL_BR_ID DESC";
@@ -120,6 +135,21 @@ class BranchModel {
                     foreach ($candidateBranchIds as $bid) {
                         $params[] = $bid;
                     }
+                }
+            } elseif ($roleId === 'R_TEACHER' || $roleId === 'TEACHER' || strpos($roleId, 'TEACHER') !== false) {
+                $userEmail = $user['email'] ?? $user['user_email_id'] ?? '';
+                $userId = $user['userId'] ?? $user['user_id'] ?? $user['id'] ?? '';
+                $branchId = $user['branch_id'] ?? $user['user_branch_id'] ?? null;
+                $sql .= " AND (SCHL_BR_ID IN (
+                    SELECT t.BR_TCHR_BR_ID FROM SCHL_BR_TCHR t 
+                    WHERE (t.BR_TCHR_ID = ? OR (t.BR_TCHR_EMAI_ID = ? AND ? != ''))
+                      AND t.BR_TCHR_BR_ID IS NOT NULL AND t.BR_TCHR_BR_ID != ''
+                )" . ($branchId ? " OR SCHL_BR_ID = ?" : "") . ")";
+                $params[] = $userId;
+                $params[] = $userEmail;
+                $params[] = $userEmail;
+                if ($branchId) {
+                    $params[] = $branchId;
                 }
             }
         }
