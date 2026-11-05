@@ -191,7 +191,7 @@ class UserService {
 
             // 4. If Student
             if (strpos($roleCode, 'STUDENT') !== false || $roleCode === 'R_STUDENT') {
-                $sStmt = $db->prepare("SELECT s.STU_ID, s.STU_NM, s.STU_ROLL_NO, s.STU_BR_CLASS_ID,
+                $sStmt = $db->prepare("SELECT s.STU_ID, s.STU_NM, s.STU_BR_CLASS_ID,
                                               sess.SCHL_BR_CLASS_SEC_SESS_ID as class_session_id,
                                               sess.SCHL_BR_CLASS_SEC_SESS_SECT as section_name,
                                               sess.SCHL_BR_CLASS_SEC_SESS_CLASS as sess_class_id,
@@ -204,13 +204,13 @@ class UserService {
                                        LEFT JOIN SCHL_BR_CLASS c ON (sess.SCHL_BR_CLASS_SEC_SESS_CLASS = c.SCHL_BR_CLS_ID OR s.STU_BR_CLASS_ID = c.SCHL_BR_CLS_ID)
                                        LEFT JOIN SCHL_BRANCH b ON (sess.SCHL_BR_CLASS_SEC_SESS_BR_ID = b.SCHL_BR_ID OR c.SCHL_BR_CENT_ID = b.SCHL_BR_ID)
                                        LEFT JOIN MSTR_SCHOOL_MAIN m ON (b.SCHL_BR_CENTER_ID = m.schl_mn_id OR b.SCHL_BR_ID = m.schl_mn_id)
-                                       WHERE s.USER_ID = ? OR s.STU_EMAILID = ? OR s.STU_ID = ? OR s.STU_ROLL_NO = ? 
+                                       WHERE s.USER_ID = ? OR s.STU_EMAILID = ? OR s.STU_ID = ? 
                                        LIMIT 1");
-                $sStmt->execute([$user['user_id'], $user['user_email_id'], $user['user_id'], $user['user_id']]);
+                $sStmt->execute([$user['user_id'], $user['user_email_id'], $user['user_id']]);
                 $sRow = $sStmt->fetch(PDO::FETCH_ASSOC);
                 if (!$sRow) {
                     // Fallback to active student template if student record was created through generic login
-                    $fb = $db->query("SELECT s.STU_ID, s.STU_NM, s.STU_ROLL_NO, s.STU_BR_CLASS_ID,
+                    $fb = $db->query("SELECT s.STU_ID, s.STU_NM, s.STU_BR_CLASS_ID,
                                              sess.SCHL_BR_CLASS_SEC_SESS_ID as class_session_id,
                                              sess.SCHL_BR_CLASS_SEC_SESS_SECT as section_name,
                                              sess.SCHL_BR_CLASS_SEC_SESS_CLASS as sess_class_id,
@@ -248,7 +248,7 @@ class UserService {
 
             // 5. If Parent / Guardian
             if (strpos($roleCode, 'PARENT') !== false || strpos($roleCode, 'GUARDIAN') !== false || $roleCode === 'R_GUARDIAN') {
-                $pStmt = $db->prepare("SELECT p.PRNT_ID, s.STU_ID, s.STU_NM, s.STU_ROLL_NO,
+                $pStmt = $db->prepare("SELECT p.PRNT_ID, s.STU_ID, s.STU_NM,
                                               sess.SCHL_BR_CLASS_SEC_SESS_SECT as section_name,
                                               c.SCHL_BR_CLASS_NM as class_name,
                                               COALESCE(sess.SCHL_BR_CLASS_SEC_SESS_BR_ID, c.SCHL_BR_CENT_ID, b.SCHL_BR_ID) as br_id,

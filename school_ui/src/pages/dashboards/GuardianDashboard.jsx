@@ -1,8 +1,22 @@
 import axios from '../../lib/axios'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useWhitelabel } from '../../contexts/WhitelabelContext'
+import { useRealtimeSubscription } from '../../contexts/RealtimeContext'
 import { motion } from 'framer-motion'
+import {
+  PieChart,
+  Pie,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Cell,
+  Tooltip as RechartsTooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts'
 import {
   FaCheckCircle,
   FaTimesCircle,
@@ -90,10 +104,17 @@ export default function GuardianDashboard() {
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0])
   const [subjectAttendance, setSubjectAttendance] = useState([])
   const [overallStats, setOverallStats] = useState(null)
+  const [analyticsData, setAnalyticsData] = useState({
+    subjectWise: [],
+    dayWise: [],
+    weekWise: [],
+    monthWise: []
+  })
+  const [graphViewMode, setGraphViewMode] = useState('subject') // 'subject' | 'day' | 'week' | 'month'
   const [loading, setLoading] = useState(true)
 
-  // 1. Strictly fetch only real students linked to this logged-in guardian
-  useEffect(() => {
+  // 1. Strictly fetch real students linked to this logged-in guardian
+  const fetchWards = useCallback(() => {
     axios.get(`${import.meta.env.VITE_API_BASE_URL}/student/wards`)
       .then(res => {
         const list = Array.isArray(res.data) ? res.data : res.data?.data || []
@@ -106,16 +127,25 @@ export default function GuardianDashboard() {
       .finally(() => setLoading(false))
   }, [])
 
+  useEffect(() => {
+    fetchWards()
+  }, [fetchWards])
+
+  // Real-time subscription for wards
+  useRealtimeSubscription('wards', fetchWards)
+  useRealtimeSubscription('*', fetchWards)
+
   // 2. Fetch the selected child's daily routine with period attendance and real attendance stats
   useEffect(() => {
     if (!selectedWard) return
     setLoading(true)
     Promise.allSettled([
       axios.get(`${import.meta.env.VITE_API_BASE_URL}/student/routine?student_id=${selectedWard}&date=${selectedDate}`),
+      axios.get(`${import.meta.env.VITE_API_BASE_URL}/student/parent-analytics?student_id=${selectedWard}`),
       axios.get(`${import.meta.env.VITE_API_BASE_URL}/student/subject-attendance?student_id=${selectedWard}`),
       axios.get(`${import.meta.env.VITE_API_BASE_URL}/dashboard/overview?ward_id=${selectedWard}`),
     ])
-      .then(([routineRes, attRes, overviewRes]) => {
+      .then(([routineRes, analyticsRes, attRes, overviewRes]) => {
         if (routineRes.status === 'fulfilled') {
           const payload = routineRes.value?.data
           const items = Array.isArray(payload) ? payload : payload?.data || []
@@ -124,13 +154,33 @@ export default function GuardianDashboard() {
           setRoutines([])
         }
 
+        if (analyticsRes.status === 'fulfilled') {
+          const aData = analyticsRes.value?.data?.data || analyticsRes.value?.data || {}
+          setAnalyticsData({
+            subjectWise: aData.subjectWise || [],
+            dayWise: aData.dayWise || [],
+            weekWise: aData.weekWise || [],
+            monthWise: aData.monthWise || []
+          })
+          if (aData.overall && aData.overall.overallPercentage !== undefined) {
+            setOverallStats(aData.overall)
+          }
+        }
+
         if (attRes.status === 'fulfilled') {
           const attData = attRes.value?.data?.data || attRes.value?.data || {}
-          setSubjectAttendance(attData.summary || [])
-          setOverallStats(attData.overall || null)
+          const summary = attData.summary || []
+          setSubjectAttendance(summary)
+          if (!overallStats) {
+            const totalSessions = summary.reduce((acc, s) => acc + (s.totalSessions || 0), 0)
+            const totalPresent = summary.reduce((acc, s) => acc + (s.presentSessions || 0), 0)
+            const overallPercentage = totalSessions > 0
+              ? Math.round((totalPresent * 100) / totalSessions)
+              : (summary.length > 0 ? 0 : null)
+            setOverallStats(overallPercentage !== null ? { overallPercentage } : null)
+          }
         } else {
           setSubjectAttendance([])
-          setOverallStats(null)
         }
       })
       .finally(() => setLoading(false))
@@ -158,6 +208,18 @@ export default function GuardianDashboard() {
     })
     return { present, absent, pending, total: filteredRoutines.length }
   }, [filteredRoutines])
+
+  const guardianAttendanceChartData = useMemo(() => {
+    const totalPresent = subjectAttendance.reduce((acc, s) => acc + (Number(s.presentSessions) || 0), 0)
+    const totalAbsent = subjectAttendance.reduce((acc, s) => acc + (Number(s.absentSessions) || 0), 0)
+    const totalSessions = subjectAttendance.reduce((acc, s) => acc + (Number(s.totalSessions) || 0), 0)
+    const pending = Math.max(0, totalSessions - totalPresent - totalAbsent)
+    return [
+      { name: 'Present', value: totalPresent, color: '#10b981' },
+      { name: 'Absent', value: totalAbsent, color: '#ef4444' },
+      { name: 'Pending', value: pending, color: '#9ca3af' },
+    ].filter(d => d.value > 0)
+  }, [subjectAttendance])
 
   return (
     <motion.div
@@ -301,10 +363,156 @@ export default function GuardianDashboard() {
               <div className="metric-icon-wrap metric-icon-purple"><FaChartBar /></div>
               <div className="metric-label">Cumulative Attendance</div>
               <div className="metric-value">
-                {overallStats?.overallPercentage !== undefined ? `${overallStats.overallPercentage}%` : 'Recorded'}
+                {overallStats?.overallPercentage !== undefined ? `${overallStats.overallPercentage}%` : '0%'}
               </div>
               <span className="metric-delta metric-delta-up">➔ Subject Breakdown</span>
             </motion.div>
+          </div>
+
+          {/* ── Attendance Status Graph: Subject, Day, Week & Monthly Analytics ── */}
+          <div className="glass-panel chart-card" style={{ padding: '24px', borderRadius: '12px', marginBottom: '24px' }}>
+            <div className="section-header" style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+              <div>
+                <h3 className="section-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span className="section-title-dot" />
+                  Real-Time Attendance Analytics
+                </h3>
+                <p style={{ margin: '4px 0 0 0', color: 'var(--clr-text-muted, #6b7280)', fontSize: '0.82rem' }}>
+                  Subject-wise, full day-wise, weekly and monthly attendance breakdown for {childName}.
+                </p>
+              </div>
+
+              {/* View Switcher Tabs */}
+              <div style={{ display: 'inline-flex', padding: '3px', background: 'var(--clr-surface-alt, #f3f4f6)', borderRadius: '8px', gap: '4px' }}>
+                {[
+                  { key: 'subject', label: 'Subject Wise' },
+                  { key: 'day', label: 'Day Wise' },
+                  { key: 'week', label: 'Week Wise' },
+                  { key: 'month', label: 'Monthly' },
+                  { key: 'pie', label: 'Ratio Pie' }
+                ].map(tab => (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setGraphViewMode(tab.key)}
+                    style={{
+                      padding: '6px 12px',
+                      fontSize: '0.78rem',
+                      fontWeight: 600,
+                      borderRadius: '6px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: graphViewMode === tab.key ? 'var(--clr-primary, #005A9E)' : 'transparent',
+                      color: graphViewMode === tab.key ? '#ffffff' : 'var(--clr-text-muted, #4b5563)',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Chart Renderings based on mode */}
+            {graphViewMode === 'pie' ? (
+              guardianAttendanceChartData.length > 0 ? (
+                <div style={{ height: 240 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={guardianAttendanceChartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
+                        {guardianAttendanceChartData.map((entry, idx) => (
+                          <Cell key={idx} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <RechartsTooltip />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <p style={{ color: 'var(--clr-text-muted, #6b7280)', fontSize: '0.85rem' }}>No attendance ratio data recorded yet.</p>
+              )
+            ) : graphViewMode === 'subject' ? (
+              analyticsData.subjectWise.length > 0 ? (
+                <div style={{ height: 260 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={analyticsData.subjectWise} margin={{ top: 10, right: 10, left: -10, bottom: 25 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" vertical={false} />
+                      <XAxis dataKey="subject" tick={{ fontSize: 11 }} angle={-15} textAnchor="end" interval={0} />
+                      <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} />
+                      <RechartsTooltip formatter={(val, name) => [`${val}%`, 'Attendance']} />
+                      <Bar dataKey="percentage" name="Attendance %" fill="#0078D4" radius={[4, 4, 0, 0]} maxBarSize={38}>
+                        {analyticsData.subjectWise.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.percentage >= 75 ? '#10b981' : entry.percentage >= 50 ? '#f59e0b' : '#ef4444'} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <p style={{ color: 'var(--clr-text-muted, #6b7280)', fontSize: '0.85rem' }}>No subject-wise attendance recorded yet.</p>
+              )
+            ) : graphViewMode === 'day' ? (
+              analyticsData.dayWise.length > 0 ? (
+                <div style={{ height: 260 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={analyticsData.dayWise} margin={{ top: 10, right: 10, left: -10, bottom: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" vertical={false} />
+                      <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                      <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} />
+                      <RechartsTooltip formatter={(val, name, props) => [`${val}% (${props.payload.dayStatus})`, 'Full Day Status']} />
+                      <Bar dataKey="percentage" name="Daily Attendance %" fill="#2563eb" radius={[4, 4, 0, 0]} maxBarSize={36}>
+                        {analyticsData.dayWise.map((entry, index) => (
+                          <Cell key={`day-cell-${index}`} fill={entry.percentage >= 75 ? '#10b981' : entry.percentage > 0 ? '#f59e0b' : '#ef4444'} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <p style={{ color: 'var(--clr-text-muted, #6b7280)', fontSize: '0.85rem' }}>No daily attendance records found.</p>
+              )
+            ) : graphViewMode === 'week' ? (
+              analyticsData.weekWise.length > 0 ? (
+                <div style={{ height: 260 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={analyticsData.weekWise} margin={{ top: 10, right: 10, left: -10, bottom: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" vertical={false} />
+                      <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                      <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} />
+                      <RechartsTooltip formatter={(val) => [`${val}%`, 'Weekly Attendance']} />
+                      <Bar dataKey="percentage" name="Weekly Attendance %" fill="#8b5cf6" radius={[4, 4, 0, 0]} maxBarSize={38}>
+                        {analyticsData.weekWise.map((entry, index) => (
+                          <Cell key={`week-cell-${index}`} fill={entry.percentage >= 75 ? '#10b981' : '#8b5cf6'} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <p style={{ color: 'var(--clr-text-muted, #6b7280)', fontSize: '0.85rem' }}>No weekly attendance records found.</p>
+              )
+            ) : (
+              analyticsData.monthWise.length > 0 ? (
+                <div style={{ height: 260 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={analyticsData.monthWise} margin={{ top: 10, right: 10, left: -10, bottom: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" vertical={false} />
+                      <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                      <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} />
+                      <RechartsTooltip formatter={(val) => [`${val}%`, 'Monthly Attendance']} />
+                      <Bar dataKey="percentage" name="Monthly Attendance %" fill="#0284c7" radius={[4, 4, 0, 0]} maxBarSize={42}>
+                        {analyticsData.monthWise.map((entry, index) => (
+                          <Cell key={`mon-cell-${index}`} fill={entry.percentage >= 75 ? '#10b981' : '#0284c7'} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <p style={{ color: 'var(--clr-text-muted, #6b7280)', fontSize: '0.85rem' }}>No monthly attendance records found.</p>
+              )
+            )}
           </div>
 
           {/* ── Unified Daily Routine & Attendance Module (Matching Branch Routine UI) ── */}

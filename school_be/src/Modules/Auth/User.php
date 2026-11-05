@@ -159,7 +159,7 @@ class User {
             if (strpos($roleCode, 'STUDENT') !== false || $roleCode === 'R_STUDENT') {
                 try {
                     $stuStmt = $this->db->prepare("
-                        SELECT s.STU_ID, s.STU_ROLL_NO,
+                        SELECT s.STU_ID,
                                COALESCE(c.SCHL_BR_CLS_ID, sess.SCHL_BR_CLASS_SEC_SESS_CLASS, s.STU_BR_CLASS_ID) as class_id,
                                c.SCHL_BR_CLASS_NM as class_name,
                                sess.SCHL_BR_CLASS_SEC_SESS_SECT as section_name,
@@ -177,7 +177,7 @@ class User {
                     $stuRow = $stuStmt->fetch(PDO::FETCH_ASSOC);
                     if (!$stuRow) {
                         $fb = $this->db->query("
-                            SELECT s.STU_ID, s.STU_ROLL_NO,
+                            SELECT s.STU_ID,
                                    COALESCE(c.SCHL_BR_CLS_ID, sess.SCHL_BR_CLASS_SEC_SESS_CLASS, s.STU_BR_CLASS_ID) as class_id,
                                    c.SCHL_BR_CLASS_NM as class_name,
                                    sess.SCHL_BR_CLASS_SEC_SESS_SECT as section_name,
@@ -196,8 +196,8 @@ class User {
                     if ($stuRow) {
                         $user['student_id'] = $stuRow['STU_ID'];
                         $user['studentId'] = $stuRow['STU_ID'];
-                        $user['roll_no'] = $stuRow['STU_ROLL_NO'];
-                        $user['rollNo'] = $stuRow['STU_ROLL_NO'];
+                        $user['roll_no'] = null;
+                        $user['rollNo'] = null;
                         $user['class_id'] = $stuRow['class_id'];
                         $user['classId'] = $stuRow['class_id'];
                         $user['class_name'] = $stuRow['class_name'];

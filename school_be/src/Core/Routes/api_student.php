@@ -37,6 +37,9 @@ function routeStudentApi($uriPath, $method, $id, $data) {
         case '/api/student/fees-report':
             $controller->handleFeesReport($method, $id, $data);
             break;
+        case '/api/student/parent-analytics':
+            $controller->handleParentAnalytics($method, $id, $data);
+            break;
         default:
             return false; // Not handled here
     }

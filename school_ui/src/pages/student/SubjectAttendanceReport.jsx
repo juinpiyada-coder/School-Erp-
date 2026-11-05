@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import {
   FaClipboardCheck,
@@ -14,6 +14,7 @@ import {
   FaBook
 } from 'react-icons/fa'
 import axios from '../../lib/axios'
+import { useRealtimeSubscription } from '../../contexts/RealtimeContext'
 
 
 export default function SubjectAttendanceReport({ forcedRole = null }) {
@@ -195,19 +196,19 @@ export default function SubjectAttendanceReport({ forcedRole = null }) {
           <div style={{ fontSize: '0.78rem', color: 'var(--clr-text-muted, #6b7280)', fontWeight: 600, textTransform: 'uppercase' }}>
             Cumulative Attendance
           </div>
-          <div style={{ fontSize: '1.8rem', fontWeight: 800, color: totalStats.overallPct >= 75 ? '#10b981' : '#ef4444', marginTop: '4px' }}>
-            {totalStats.overallPct}%
+          <div style={{ fontSize: '1.8rem', fontWeight: 800, color: totalStats.totalHeld === 0 ? 'var(--clr-text-muted, #9ca3af)' : totalStats.overallPct >= 75 ? '#10b981' : '#ef4444', marginTop: '4px' }}>
+            {totalStats.totalHeld === 0 ? '0%' : `${totalStats.overallPct}%`}
           </div>
           <span 
             style={{ 
               display: 'inline-block', 
               fontSize: '0.75rem', 
               fontWeight: 600, 
-              color: totalStats.overallPct >= 75 ? '#059669' : '#dc2626',
+              color: totalStats.totalHeld === 0 ? 'var(--clr-text-muted, #6b7280)' : totalStats.overallPct >= 75 ? '#059669' : '#dc2626',
               marginTop: '4px' 
             }}
           >
-            {totalStats.overallPct >= 75 ? '✓ Exam Eligible (> 75%)' : '⚠ Below 75% Requirement'}
+            {totalStats.totalHeld === 0 ? 'No Classes Scheduled Yet' : totalStats.overallPct >= 75 ? '✓ Exam Eligible (> 75%)' : '⚠ Below 75% Requirement'}
           </span>
         </div>
 
@@ -260,7 +261,15 @@ export default function SubjectAttendanceReport({ forcedRole = null }) {
         </div>
 
         <div className="grid-auto-lg" style={{ gap: '16px' }}>
-          {subjectSummary.map(sub => {
+          {subjectSummary.length === 0 ? (
+            <div className="glass-panel" style={{ padding: '40px 20px', textAlign: 'center', borderRadius: '12px', gridColumn: '1 / -1' }}>
+              <FaClipboardCheck style={{ fontSize: '2rem', color: 'var(--clr-text-muted, #9ca3af)', marginBottom: '10px' }} />
+              <h4 style={{ margin: '0 0 6px 0', color: 'var(--clr-text, #111827)' }}>No Subject Attendance Records</h4>
+              <p style={{ margin: 0, color: 'var(--clr-text-muted, #6b7280)', fontSize: '0.85rem' }}>
+                There are 0 attendance sessions recorded because no periods are scheduled for this class.
+              </p>
+            </div>
+          ) : subjectSummary.map(sub => {
             const isSafe = sub.percentage >= 75
             const isSelected = selectedSubjectFilter.toLowerCase() === sub.subjectName.toLowerCase()
             return (

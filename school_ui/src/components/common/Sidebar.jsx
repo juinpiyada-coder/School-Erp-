@@ -168,8 +168,6 @@ const ROLES_CONFIG = {
     { label: 'Overview', items: [{ to: '/', icon: FaHome, label: 'Dashboard' }] },
     { label: 'Student Modules', items: [
       { to: '/student/routine', icon: FaCalendarAlt, label: 'View Daily Routine' },
-      { to: '/student/class-completion', icon: FaBookOpen, label: 'View Subject Wise Class Completion' },
-      { to: '/student/attendance-report', icon: FaClipboardCheck, label: 'View His Own Attendance Per Subject' },
       { to: '/student/fees-report', icon: FaMoneyBillWave, label: 'View Fees Due/Paid Report' }
     ]}
   ],
@@ -195,8 +193,6 @@ const ROLES_CONFIG = {
     { label: 'Overview', items: [{ to: '/', icon: FaHome, label: 'Dashboard' }] },
     { label: 'Parent Modules', items: [
       { to: '/parent/routine', icon: FaCalendarAlt, label: 'View His Children Daily Routine' },
-      { to: '/parent/class-completion', icon: FaBookOpen, label: 'View Subject Wise Class Completion' },
-      { to: '/parent/attendance-report', icon: FaClipboardCheck, label: 'View Attendance Per Subject' },
       { to: '/parent/fees-report', icon: FaMoneyBillWave, label: 'View Fees Due/Paid Report' }
     ]}
   ]

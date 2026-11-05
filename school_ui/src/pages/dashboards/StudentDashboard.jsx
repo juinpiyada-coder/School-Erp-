@@ -5,6 +5,14 @@ import { useWhitelabel } from '../../contexts/WhitelabelContext'
 import { useRealtimeSubscription } from '../../contexts/RealtimeContext'
 import { motion } from 'framer-motion'
 import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip as RechartsTooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts'
+import {
   FaCalendarAlt,
   FaChartBar,
   FaCheckCircle,
@@ -168,6 +176,15 @@ export default function StudentDashboard() {
 
   const attendancePct = attendance.pct
   const hasAttendance = attendance.total > 0
+
+  const attendanceChartData = useMemo(() => {
+    const pending = Math.max(0, attendance.total - attendance.present - attendance.absent)
+    return [
+      { name: 'Present', value: attendance.present, color: '#10b981' },
+      { name: 'Absent', value: attendance.absent, color: '#ef4444' },
+      { name: 'Pending', value: pending, color: '#9ca3af' },
+    ].filter(d => d.value > 0)
+  }, [attendance])
 
   const periodAttendanceCounts = useMemo(() => {
     let present = 0, absent = 0, pending = 0
@@ -515,6 +532,20 @@ export default function StudentDashboard() {
             </div>
 
             {hasAttendance ? (
+              <>
+              <div style={{ height: 200, marginBottom: '12px' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={attendanceChartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} label>
+                      {attendanceChartData.map((entry, idx) => (
+                        <Cell key={idx} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', borderRadius: '10px', border: '1px solid var(--clr-border, #e5e7eb)', background: 'var(--clr-surface, #ffffff)' }}>
                   <div style={{ width: '38px', height: '38px', borderRadius: '8px', background: 'rgba(0, 90, 158, 0.12)', color: 'var(--clr-primary, #005A9E)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -546,6 +577,7 @@ export default function StudentDashboard() {
                   </div>
                 </div>
               </div>
+              </>
             ) : (
               <div style={{ padding: '30px 10px', textAlign: 'center' }}>
                 <FaChartBar style={{ fontSize: '1.8rem', color: 'var(--clr-text-muted, #9ca3af)', marginBottom: '8px' }} />

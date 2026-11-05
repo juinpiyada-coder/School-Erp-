@@ -308,7 +308,15 @@ export default function SubjectClassCompletion({ forcedRole = null }) {
 
       {/* ── Subject Cards Grid ─────────────────────────────────── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        {filteredSubjects.map(sub => {
+        {filteredSubjects.length === 0 ? (
+          <div className="glass-panel" style={{ padding: '60px 20px', textAlign: 'center', borderRadius: '12px' }}>
+            <FaBookOpen style={{ fontSize: '2.5rem', color: 'var(--clr-text-muted, #9ca3af)', marginBottom: '14px' }} />
+            <h4 style={{ margin: '0 0 8px 0', color: 'var(--clr-text, #111827)', fontSize: '1.1rem' }}>No Subjects or Classes Scheduled</h4>
+            <p style={{ margin: 0, color: 'var(--clr-text-muted, #6b7280)', fontSize: '0.875rem' }}>
+              There are currently 0 class sessions scheduled for this student's section by the branch administration.
+            </p>
+          </div>
+        ) : filteredSubjects.map(sub => {
           const isExpanded = expandedSubject === sub.id
           return (
             <motion.div
