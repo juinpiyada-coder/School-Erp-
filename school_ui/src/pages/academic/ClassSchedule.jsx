@@ -74,6 +74,7 @@ export default function ClassSchedule() {
   const [teachers, setTeachers] = useState([])
   const [rooms, setRooms] = useState([])
   const [subjects, setSubjects] = useState([])
+  const [mappings, setMappings] = useState([])
   
   const [selectedBranch, setSelectedBranch] = useState('')
   const [selectedClass, setSelectedClass] = useState('')
@@ -126,13 +127,14 @@ export default function ClassSchedule() {
 
   async function loadLookups() {
     try {
-      const [clsRes, tchrRes, rmRes, subRes, branchRes, matRes] = await Promise.all([
+      const [clsRes, tchrRes, rmRes, subRes, branchRes, matRes, mapRes] = await Promise.all([
         axios.get(`${import.meta.env.VITE_API_BASE_URL}/academic/classes`),
         axios.get(`${import.meta.env.VITE_API_BASE_URL}/staff/teachers`),
         axios.get(`${import.meta.env.VITE_API_BASE_URL}/academic/rooms`),
         axios.get(`${import.meta.env.VITE_API_BASE_URL}/academic/subjects`),
         axios.get(`${import.meta.env.VITE_API_BASE_URL}/academic/branches`),
-        axios.get(`${import.meta.env.VITE_API_BASE_URL}/academic/matrices`).catch(() => ({ data: [] }))
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/academic/matrices`).catch(() => ({ data: [] })),
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/staff/mappings`).catch(() => ({ data: [] }))
       ])
       
       const clsList = Array.isArray(clsRes.data) ? clsRes.data : clsRes.data?.data || []
@@ -168,6 +170,7 @@ export default function ClassSchedule() {
       setTeachers(Array.isArray(tchrRes.data) ? tchrRes.data : tchrRes.data?.data || [])
       setRooms(Array.isArray(rmRes.data) ? rmRes.data : rmRes.data?.data || [])
       setSubjects(Array.isArray(subRes.data) ? subRes.data : subRes.data?.data || [])
+      setMappings(Array.isArray(mapRes.data) ? mapRes.data : mapRes.data?.data || [])
 
       if (mappedClasses.length > 0) {
         const matchingClass = teacherBranchId 
@@ -500,30 +503,112 @@ export default function ClassSchedule() {
             <form onSubmit={handleSaveSlot}>
               <div className="modal-body">
                 <div className="form-group">
+                  <label className="form-label">Teacher <span className="form-required">*</span></label>
+                  <select
+                    className={`form-control${errors.SCHL_BR_TCHR_ID ? ' form-input-error' : ''}`}
+                    value={formData.SCHL_BR_TCHR_ID}
+                    onChange={e => {
+                      const newTchrId = e.target.value
+                      setFormData(prev => {
+                        // Check if current selected subject belongs to this new teacher's mappings
+                        if (newTchrId) {
+                          const teacherObj = teachers.find(t => String(t.BR_TCHR_ID || t.br_tchr_id || t.TCHR_ID || t.tchr_id || t.id) === String(newTchrId))
+                          const teacherSubId = teacherObj?.subject_id || teacherObj?.subjectId || teacherObj?.TCHR_SUB_ID || ''
+                          const tchrSubIds = (teacherObj?.subject_ids ? String(teacherObj.subject_ids).split(',') : []).map(s => s.trim())
+                          const mappedSubIds = mappings
+                            .filter(m => String(m.TCHR_ID || m.tchr_id) === String(newTchrId))
+                            .map(m => String(m.TCHR_SUB_ID || m.tchr_sub_id || m.sub_id || m.id))
+                          const allValidSubIds = new Set([...tchrSubIds, ...mappedSubIds, String(teacherSubId)].filter(Boolean))
+
+                          // If currently selected subject is not mapped to this teacher, auto-select their first mapped subject or clear
+                          const currentSubValid = prev.SCHL_CLS_SCHLDL_SUB_ID && allValidSubIds.has(String(prev.SCHL_CLS_SCHLDL_SUB_ID))
+                          let nextSubId = prev.SCHL_CLS_SCHLDL_SUB_ID
+                          if (!currentSubValid) {
+                            // Find the first mapped subject for the current class
+                            const firstMatch = subjects.find(s => {
+                              const sId = String(s.BR_CLS_SUB_ID || s.br_cls_sub_id || s.SUB_ID || s.sub_id || s.id)
+                              const clsId = s.BR_CLS_ID || s.br_cls_id || s.SCHL_BR_CLS_ID || s.schl_br_cls_id || s.class_id
+                              const classMatches = !selectedClass || !clsId || String(clsId) === String(selectedClass)
+                              return allValidSubIds.has(sId) && classMatches
+                            })
+                            nextSubId = firstMatch ? (firstMatch.BR_CLS_SUB_ID || firstMatch.br_cls_sub_id || firstMatch.SUB_ID || firstMatch.id) : (allValidSubIds.size === 1 ? Array.from(allValidSubIds)[0] : '')
+                          }
+                          return { ...prev, SCHL_BR_TCHR_ID: newTchrId, SCHL_CLS_SCHLDL_SUB_ID: nextSubId }
+                        }
+                        return { ...prev, SCHL_BR_TCHR_ID: newTchrId }
+                      })
+                    }}
+                    required
+                  >
+                    <option value="">-- Select Teacher --</option>
+                    {teachers.map(t => {
+                      const tId = t.BR_TCHR_ID || t.br_tchr_id || t.TCHR_ID || t.tchr_id || t.id
+                      const tName = t.BR_TCHR_NM || t.br_tchr_nm || t.TCHR_NM || t.tchr_nm || t.name
+                      const cls = t.class_names || t.classNames || ''
+                      const subs = t.subjects || ''
+                      const mappedSubs = mappings
+                        .filter(m => String(m.TCHR_ID || m.tchr_id) === String(tId))
+                        .map(m => m.subject_name || m.BR_CLS_SUB_NAME)
+                        .filter(Boolean)
+                      const allSubNames = Array.from(new Set([...(subs ? subs.split(',').map(s => s.trim()) : []), ...mappedSubs])).join(', ')
+                      const details = [cls ? `Class: ${cls}` : '', allSubNames ? `Sub: ${allSubNames}` : ''].filter(Boolean).join(' | ')
+
+                      return <option key={tId} value={tId}>{tName}{details ? ` (${details})` : ''}</option>
+                    })}
+                  </select>
+                  {errors.SCHL_BR_TCHR_ID && <span className="form-error-msg">{errors.SCHL_BR_TCHR_ID}</span>}
+                </div>
+                <div className="form-group">
                   <label className="form-label">Subject <span className="form-required">*</span></label>
                   <select
                     className={`form-control${errors.SCHL_CLS_SCHLDL_SUB_ID ? ' form-input-error' : ''}`}
                     value={formData.SCHL_CLS_SCHLDL_SUB_ID}
                     onChange={e => {
                       const subId = e.target.value
-                      const matchingTeacher = teachers.find(t => String(t.subject_id || t.SCHL_SUB_ID || t.TCHR_SUB_ID || '') === String(subId))
                       setFormData(prev => ({
                         ...prev,
-                        SCHL_CLS_SCHLDL_SUB_ID: subId,
-                        ...(matchingTeacher && (!prev.SCHL_BR_TCHR_ID || prev.SCHL_BR_TCHR_ID === '') ? { SCHL_BR_TCHR_ID: matchingTeacher.BR_TCHR_ID || matchingTeacher.TCHR_ID || matchingTeacher.id } : {})
+                        SCHL_CLS_SCHLDL_SUB_ID: subId
                       }))
                     }}
                     required
                   >
                     <option value="">-- Select Subject --</option>
                     {(() => {
+                      // Filter subjects for the current selected class
                       const classSubjects = subjects.filter(s => {
                         if (!selectedClass) return true
                         const clsId = s.BR_CLS_ID || s.br_cls_id || s.SCHL_BR_CLS_ID || s.schl_br_cls_id || s.class_id
                         return !clsId || String(clsId) === String(selectedClass)
                       })
-                      const list = classSubjects.length > 0 ? classSubjects : subjects
-                      return list.map(s => {
+                      const baseList = classSubjects.length > 0 ? classSubjects : subjects
+
+                      // When a teacher is selected, ONLY show subjects mapped to that teacher
+                      if (formData.SCHL_BR_TCHR_ID) {
+                        const selTchrId = String(formData.SCHL_BR_TCHR_ID)
+                        const selTeacher = teachers.find(t => String(t.BR_TCHR_ID || t.br_tchr_id || t.TCHR_ID || t.tchr_id || t.id) === selTchrId)
+                        const teacherSubId = selTeacher?.subject_id || selTeacher?.subjectId || selTeacher?.TCHR_SUB_ID || ''
+                        const tchrSubIds = (selTeacher?.subject_ids ? String(selTeacher.subject_ids).split(',') : []).map(s => s.trim())
+                        const mappedSubIds = mappings
+                          .filter(m => String(m.TCHR_ID || m.tchr_id) === selTchrId)
+                          .map(m => String(m.TCHR_SUB_ID || m.tchr_sub_id || m.sub_id || m.id))
+                        const allowedSubIds = new Set([...tchrSubIds, ...mappedSubIds, String(teacherSubId)].filter(Boolean))
+
+                        const teacherFiltered = baseList.filter(s => {
+                          const sId = String(s.BR_CLS_SUB_ID || s.br_cls_sub_id || s.SUB_ID || s.sub_id || s.id)
+                          return allowedSubIds.has(sId)
+                        })
+
+                        // If mapped subjects exist, display ONLY mapped subjects
+                        const finalList = teacherFiltered.length > 0 ? teacherFiltered : baseList
+                        return finalList.map(s => {
+                          const sId = s.BR_CLS_SUB_ID || s.br_cls_sub_id || s.SUB_ID || s.sub_id || s.id
+                          const sName = s.BR_CLS_SUB_NAME || s.br_cls_sub_name || s.SUB_NM || s.sub_nm || s.name
+                          const cName = s.class_name || s.SCHL_BR_CLASS_NM || ''
+                          return <option key={sId} value={sId}>{sName}{!selectedClass && cName ? ` (${cName})` : ''}</option>
+                        })
+                      }
+
+                      return baseList.map(s => {
                         const sId = s.BR_CLS_SUB_ID || s.br_cls_sub_id || s.SUB_ID || s.sub_id || s.id
                         const sName = s.BR_CLS_SUB_NAME || s.br_cls_sub_name || s.SUB_NM || s.sub_nm || s.name
                         const cName = s.class_name || s.SCHL_BR_CLASS_NM || ''
@@ -532,19 +617,6 @@ export default function ClassSchedule() {
                     })()}
                   </select>
                   {errors.SCHL_CLS_SCHLDL_SUB_ID && <span className="form-error-msg">{errors.SCHL_CLS_SCHLDL_SUB_ID}</span>}
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Teacher <span className="form-required">*</span></label>
-                  <select className={`form-control${errors.SCHL_BR_TCHR_ID ? ' form-input-error' : ''}`} value={formData.SCHL_BR_TCHR_ID} onChange={e => setFormData({...formData, SCHL_BR_TCHR_ID: e.target.value})} required>
-                    <option value="">-- Select Teacher --</option>
-                    {teachers.map(t => {
-                      const tId = t.BR_TCHR_ID || t.br_tchr_id || t.TCHR_ID || t.tchr_id || t.id
-                      const tName = t.BR_TCHR_NM || t.br_tchr_nm || t.TCHR_NM || t.tchr_nm || t.name
-                      const cls = t.class_names || t.classNames || ''
-                      return <option key={tId} value={tId}>{tName}{cls ? ` (${cls})` : ''}</option>
-                    })}
-                  </select>
-                  {errors.SCHL_BR_TCHR_ID && <span className="form-error-msg">{errors.SCHL_BR_TCHR_ID}</span>}
                 </div>
                 <div className="form-group">
                   <label className="form-label">Room <span className="form-required">*</span></label>
