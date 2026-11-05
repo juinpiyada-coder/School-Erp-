@@ -414,7 +414,7 @@ export default function Attendance() {
               color: activeTab === 'daily' ? '#fff' : 'var(--clr-text-secondary)'
             }}
           >
-            <FaClipboardList /> Today's Log
+            <FaClipboardList /> Today&apos;s Log
           </button>
           <button
             type="button"
@@ -675,7 +675,7 @@ export default function Attendance() {
           </div>
         </div>
       ) : (
-        /* ── Today's Log View (Daily Mode) ── */
+        /* ── Today&apos;s Log View (Daily Mode) ── */
         <>
       {/* ── Summary Stat Cards ── */}
       <div className="metrics-grid metrics-grid-5">
