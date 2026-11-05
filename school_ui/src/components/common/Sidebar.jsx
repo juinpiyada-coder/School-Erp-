@@ -168,6 +168,7 @@ const ROLES_CONFIG = {
     { label: 'Overview', items: [{ to: '/', icon: FaHome, label: 'Dashboard' }] },
     { label: 'Student Modules', items: [
       { to: '/student/routine', icon: FaCalendarAlt, label: 'View Daily Routine' },
+      { to: '/student/attendance-report', icon: FaClipboardCheck, label: 'Attendance History' },
       { to: '/student/fees-report', icon: FaMoneyBillWave, label: 'View Fees Due/Paid Report' }
     ]}
   ],

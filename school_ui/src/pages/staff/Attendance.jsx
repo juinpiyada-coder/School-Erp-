@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { toast } from 'react-toastify'
 
 import { motion } from 'framer-motion'
-import { FaSearch, FaDownload, FaEdit, FaSchool, FaCheckCircle, FaClipboardList, FaTimesCircle, FaClock, FaUmbrellaBeach, FaTimes, FaSave, FaChartBar, FaSync, FaCalendarAlt, FaCircle, FaUserCheck, FaCheckDouble, FaLock, FaInfoCircle } from 'react-icons/fa'
+import { FaSearch, FaDownload, FaEdit, FaSchool, FaCheckCircle, FaClipboardList, FaTimesCircle, FaClock, FaUmbrellaBeach, FaTimes, FaSave, FaChartBar, FaSync, FaCalendarAlt, FaCircle, FaUserCheck, FaCheckDouble, FaLock, FaInfoCircle, FaHistory } from 'react-icons/fa'
 
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
@@ -218,12 +218,24 @@ function EditAttendanceModal({ record, records = [], isBranchAdmin = true, onClo
 
 // ─── Main Attendance Page ─────────────────────────────────────────────────────
 export default function Attendance() {
+  const [activeTab, setActiveTab]       = useState('daily') // 'daily' or 'history'
   const [logs, setLogs]           = useState([])
   const [loading, setLoading]     = useState(true)
   const [statusFilter, setStatusFilter] = useState('All')
   const [dateFilter, setDateFilter]     = useState(toDateInputValue(new Date()))
   const [search, setSearch]             = useState('')
   const [editRecord, setEditRecord]     = useState(null)
+
+  // Attendance History specific state
+  const [historyTeacherId, setHistoryTeacherId] = useState('')
+  const [historyStartDate, setHistoryStartDate] = useState(() => {
+    const d = new Date()
+    d.setDate(d.getDate() - 30)
+    return d.toISOString().split('T')[0]
+  })
+  const [historyEndDate, setHistoryEndDate]     = useState(() => toDateInputValue(new Date()))
+  const [historyLogs, setHistoryLogs]           = useState([])
+  const [loadingHistory, setLoadingHistory]     = useState(false)
 
   const user = JSON.parse(sessionStorage.getItem('e_school_user') || '{}')
   const userRole = (user?.user_role || user?.role_id || user?.role || '').toUpperCase()
@@ -236,6 +248,49 @@ export default function Attendance() {
   })
 
   const statuses = ['All', ...Object.keys(STATUS_CONFIG)]
+  const staffOptions = Array.from(new Map(logs.concat(historyLogs).map(item => [item.id, item.name])).entries())
+
+  // ── Fetch historical attendance logs across date ranges ──
+  const loadHistoryLogs = useCallback(async () => {
+    setLoadingHistory(true)
+    try {
+      const start = new Date(historyStartDate)
+      const end = new Date(historyEndDate)
+      const dateList = []
+      let curr = new Date(start)
+      while (curr <= end && dateList.length < 31) {
+        dateList.push(curr.toISOString().split('T')[0])
+        curr.setDate(curr.getDate() + 1)
+      }
+
+      const requests = dateList.map(dt => {
+        const p = { date: dt }
+        if (historyTeacherId) p.teacherId = historyTeacherId
+        else if (isTeacher && currentTeacherId) p.teacherId = currentTeacherId
+        return axios.get(`${import.meta.env.VITE_API_BASE_URL}/staff/attendance`, { params: p })
+          .then(res => {
+            const items = Array.isArray(res.data) ? res.data : res.data?.data ?? []
+            return items.map(item => ({ ...item, date: dt }))
+          })
+          .catch(() => [])
+      })
+
+      const results = await Promise.all(requests)
+      const flattened = results.flat().sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+      setHistoryLogs(flattened)
+    } catch (err) {
+      console.error('Failed to load staff attendance history:', err)
+      setHistoryLogs([])
+    } finally {
+      setLoadingHistory(false)
+    }
+  }, [historyStartDate, historyEndDate, historyTeacherId, isTeacher, currentTeacherId])
+
+  useEffect(() => {
+    if (activeTab === 'history') {
+      loadHistoryLogs()
+    }
+  }, [activeTab, loadHistoryLogs])
 
   // ── Fetch logs from API ──
   const loadLogs = useCallback(async () => {
@@ -258,6 +313,14 @@ export default function Attendance() {
   useEffect(() => { loadLogs() }, [loadLogs])
 
   // ── Client-side search ──
+  const filteredHistory = historyLogs.filter((r) => {
+    const haystack = `${r.name}`.toLowerCase()
+    const matchesSearch = !search || haystack.includes(search.toLowerCase())
+    const matchesTeacher = !historyTeacherId || String(r.id) === String(historyTeacherId) || String(r.teacherId) === String(historyTeacherId)
+    const matchesStatus = statusFilter === 'All' || r.status === statusFilter
+    return matchesSearch && matchesTeacher && matchesStatus
+  })
+
   const filtered = logs.filter((r) => {
     const haystack = `${r.name}`.toLowerCase()
     return !search || haystack.includes(search.toLowerCase())
@@ -323,6 +386,57 @@ export default function Attendance() {
           <h1 className="page-title">{isTeacher ? 'My Attendance & Leave' : 'Staff Attendance'}</h1>
           <p className="page-subtitle">{TODAY_LABEL}</p>
         </div>
+
+        {/* Tab Switcher: Daily Roll-Call vs Attendance History */}
+        <div style={{
+          display: 'inline-flex',
+          background: 'var(--clr-surface)',
+          border: '1px solid var(--clr-glass-border)',
+          borderRadius: 'var(--radius-md)',
+          padding: '4px',
+          boxShadow: 'var(--shadow-sm)'
+        }}>
+          <button
+            type="button"
+            onClick={() => setActiveTab('daily')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 16px',
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              borderRadius: 'var(--radius-sm)',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              background: activeTab === 'daily' ? 'var(--clr-primary)' : 'transparent',
+              color: activeTab === 'daily' ? '#fff' : 'var(--clr-text-secondary)'
+            }}
+          >
+            <FaClipboardList /> Today's Log
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('history')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 16px',
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              borderRadius: 'var(--radius-sm)',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              background: activeTab === 'history' ? 'var(--clr-primary)' : 'transparent',
+              color: activeTab === 'history' ? '#fff' : 'var(--clr-text-secondary)'
+            }}
+          >
+            <FaHistory /> Attendance History
+          </button>
+        </div>
         <div className="flex gap-md" style={{ flexWrap: 'wrap', alignItems: 'center' }}>
           {isBranchAdmin ? (
             <>
@@ -381,6 +495,188 @@ export default function Attendance() {
         </div>
       </div>
 
+      {/* ── Attendance History Mode View ── */}
+      {activeTab === 'history' ? (
+        <div className="space-y-md">
+          {/* History Controls Bar */}
+          <div className="glass-panel page-card">
+            <div className="flex items-center gap-md" style={{ flexWrap: 'wrap', marginBottom: 'var(--sp-md)' }}>
+              {/* Status tabs */}
+              <div className="flex gap-sm" style={{ flexWrap: 'wrap' }}>
+                {statuses.map((s) => (
+                  <button
+                    key={s}
+                    className={statusFilter === s ? 'btn-primary' : 'btn-secondary'}
+                    style={{ padding: '7px 14px', fontSize: '0.82rem' }}
+                    onClick={() => setStatusFilter(s)}
+                  >
+                    {s === 'All' ? <FaClipboardList /> : STATUS_CONFIG[s].icon} {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-md" style={{ flexWrap: 'wrap' }}>
+              {/* Search */}
+              <div className="header-search">
+                <span className="header-search-icon"><FaSearch /></span>
+                <input
+                  className="header-search-input"
+                  type="search"
+                  placeholder="Search staff name…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+
+              {/* Staff filter dropdown (for Admins) */}
+              {!isTeacher && staffOptions.length > 0 && (
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '2px' }}>Staff Member</label>
+                  <select
+                    className="form-input"
+                    style={{ width: 'auto' }}
+                    value={historyTeacherId}
+                    onChange={(e) => setHistoryTeacherId(e.target.value)}
+                  >
+                    <option value="">All Staff</option>
+                    {staffOptions.map(([id, nm]) => (
+                      <option key={id} value={id}>{nm}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Date range filter */}
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '2px' }}><FaCalendarAlt /> From Date</label>
+                <input
+                  type="date"
+                  className="form-input"
+                  style={{ width: 'auto' }}
+                  value={historyStartDate}
+                  onChange={(e) => setHistoryStartDate(e.target.value)}
+                />
+              </div>
+
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '2px' }}><FaCalendarAlt /> To Date</label>
+                <input
+                  type="date"
+                  className="form-input"
+                  style={{ width: 'auto' }}
+                  value={historyEndDate}
+                  onChange={(e) => setHistoryEndDate(e.target.value)}
+                />
+              </div>
+
+              <button
+                className="btn-secondary"
+                onClick={loadHistoryLogs}
+                disabled={loadingHistory}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              >
+                <FaSync /> {loadingHistory ? 'Loading…' : 'Refresh History'}
+              </button>
+            </div>
+          </div>
+
+          {/* History Records Table */}
+          <div className="glass-panel page-card">
+            <div className="section-header">
+              <div className="section-title">
+                <span className="section-title-dot" />
+                Historical Attendance Logs
+              </div>
+              <span className="text-muted">
+                {loadingHistory ? 'Fetching past logs…' : `${filteredHistory.length} historical record${filteredHistory.length !== 1 ? 's' : ''} found`}
+              </span>
+            </div>
+
+            {loadingHistory ? (
+              <div className="spinner-wrap">
+                <span className="spinner" role="status" aria-label="Loading historical attendance" />
+              </div>
+            ) : (
+              <div className="table-container">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th scope="col" style={{ width: '48px' }}>#</th>
+                      <th scope="col">Date</th>
+                      <th scope="col">Staff Member</th>
+                      <th scope="col">Clock-In</th>
+                      <th scope="col">Clock-Out</th>
+                      <th scope="col">Duration</th>
+                      <th scope="col">Classes Conducted</th>
+                      <th scope="col">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredHistory.map((r, i) => (
+                      <tr key={r.id + '_' + r.date + '_' + i}>
+                        <td>{i + 1}</td>
+                        <td>
+                          <span style={{ fontWeight: 600, color: 'var(--clr-text-primary)' }}>
+                            {r.date ? new Date(r.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="flex items-center gap-sm">
+                            <div className={`avatar ${AVATAR_CLRS[i % AVATAR_CLRS.length]}`}>
+                              {initials(r.name)}
+                            </div>
+                            <div>
+                              <div className="font-bold">{r.name}</div>
+                              <div className="text-muted" style={{ fontSize: '0.75rem' }}>ID: {r.id || '—'}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <span className={`attendance-time-cell${r.checkIn !== '—' ? ' time-present' : ' time-absent'}`}>
+                            {r.checkIn !== '—' && <FaCircle style={{ color: 'green', marginRight: 4, display: 'inline', fontSize: '0.65rem' }} />} {r.checkIn}
+                          </span>
+                        </td>
+                        <td>
+                          <span className={`attendance-time-cell${r.checkOut !== '—' ? ' time-present' : ' time-absent'}`}>
+                            {r.checkOut !== '—' && <FaCircle style={{ color: 'red', marginRight: 4, display: 'inline', fontSize: '0.65rem' }} />} {r.checkOut}
+                          </span>
+                        </td>
+                        <td>
+                          <span style={{ fontSize: '0.82rem', fontWeight: 600, color: r.duration !== '—' ? 'var(--clr-text-primary)' : 'var(--clr-text-muted)' }}>
+                            {r.duration || '—'}
+                          </span>
+                        </td>
+                        <td>
+                          <span className="badge badge-secondary" style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
+                            {r.classesConducted ?? 0} / {r.totalClasses ?? 0}
+                          </span>
+                        </td>
+                        <td>
+                          <span className={`badge ${STATUS_CONFIG[r.status]?.badge ?? 'badge-info'}`}>
+                            {STATUS_CONFIG[r.status]?.icon} {r.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+
+                    {filteredHistory.length === 0 && (
+                      <tr>
+                        <td colSpan={8} style={{ textAlign: 'center', padding: '40px 16px', color: 'var(--clr-text-muted)' }}>
+                          <div style={{ fontSize: '2rem', marginBottom: '8px' }}><FaHistory /></div>
+                          No attendance history records match your selected range and filters.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        /* ── Today's Log View (Daily Mode) ── */
+        <>
       {/* ── Summary Stat Cards ── */}
       <div className="metrics-grid metrics-grid-5">
         <div className="glass-panel metric-card animate-fade-in-up">
@@ -668,8 +964,11 @@ export default function Attendance() {
                           className="btn-icon"
                           aria-label={`View history for ${r.name}`}
                           title="View history"
-                          onClick={() => toast.info(`Attendance history for ${r.name} — coming soon.`)}
-                        ><FaChartBar /></button>
+                          onClick={() => {
+                            setHistoryTeacherId(r.id)
+                            setActiveTab('history')
+                          }}
+                        ><FaHistory /></button>
                       </div>
                     </td>
                   </tr>
@@ -705,6 +1004,9 @@ export default function Attendance() {
           </div>
         )}
       </div>
+
+        </>
+      )}
 
       {/* ── Edit Modal ── */}
       {editRecord && isBranchAdmin && (

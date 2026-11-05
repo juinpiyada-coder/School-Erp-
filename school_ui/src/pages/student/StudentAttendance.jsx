@@ -15,7 +15,9 @@ import {
   FaCheckDouble,
   FaUserTimes,
   FaCalendarDay,
-  FaLayerGroup
+  FaLayerGroup,
+  FaHistory,
+  FaSync
 } from 'react-icons/fa'
 import { toast } from 'react-toastify'
 
@@ -40,8 +42,17 @@ export default function StudentAttendance() {
   const [role, setRole] = useState('')
   const [userCenterId, setUserCenterId] = useState('')
 
-  // Mode: 'daily' (Class-wise daily roll-call) or 'period' (Period timetable routine)
+  // Mode: 'daily' (Class-wise daily roll-call), 'period' (Period timetable routine), or 'history' (Historical Attendance Records)
   const [attendanceMode, setAttendanceMode] = useState('daily')
+  const [historyLogs, setHistoryLogs] = useState([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
+  const [historyStartDate, setHistoryStartDate] = useState(() => {
+    const d = new Date()
+    d.setDate(d.getDate() - 30)
+    return d.toISOString().split('T')[0]
+  })
+  const [historyEndDate, setHistoryEndDate] = useState(() => new Date().toISOString().split('T')[0])
+  const [historyStatusFilter, setHistoryStatusFilter] = useState('ALL')
 
   const today = new Date().toISOString().split('T')[0]
   const [selectedDate, setSelectedDate] = useState(today)
@@ -71,6 +82,26 @@ export default function StudentAttendance() {
       navigate('/student/attendance-report', { replace: true })
     }
   }, [role, isReadOnlyRole, navigate])
+
+  const loadAttendanceHistory = useCallback(async () => {
+    setLoadingHistory(true)
+    try {
+      const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/student/attendance?limit=1000`)
+      const list = Array.isArray(res.data) ? res.data : res.data?.data || []
+      setHistoryLogs(list)
+    } catch (err) {
+      console.error('Failed to load attendance history:', err)
+      setHistoryLogs([])
+    } finally {
+      setLoadingHistory(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (attendanceMode === 'history') {
+      loadAttendanceHistory()
+    }
+  }, [attendanceMode, loadAttendanceHistory])
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -323,6 +354,23 @@ export default function StudentAttendance() {
     loadClassStudents()
   }, [selectedClass, selectedSchedule, selectedDate, classes])
 
+  const filteredHistoryLogs = useMemo(() => {
+    return historyLogs.filter(log => {
+      const logDate = log.STU_ATT_DT || log.ATT_DT || log.date || ''
+      const logStatus = log.STU_PRES || log.ATT_STATUS || log.status || 'Present'
+      const stuName = (log.STU_NM || log.student_name || log.name || '').toLowerCase()
+      const className = (log.class_name || log.className || '').toLowerCase()
+      const searchLower = search.toLowerCase()
+
+      const matchSearch = !search || stuName.includes(searchLower) || className.includes(searchLower)
+      const matchStatus = historyStatusFilter === 'ALL' || logStatus.toLowerCase() === historyStatusFilter.toLowerCase()
+      const matchStart = !historyStartDate || (logDate >= historyStartDate)
+      const matchEnd = !historyEndDate || (logDate <= historyEndDate)
+
+      return matchSearch && matchStatus && matchStart && matchEnd
+    })
+  }, [historyLogs, search, historyStatusFilter, historyStartDate, historyEndDate])
+
   const filteredStudents = useMemo(() => {
     return students.filter(s =>
       s.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -453,9 +501,29 @@ export default function StudentAttendance() {
             >
               <FaClock /> Period Routine
             </button>
+            <button
+              type="button"
+              onClick={() => { setAttendanceMode('history'); setSelectedSchedule('') }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 14px',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                borderRadius: 'var(--radius-sm)',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                background: attendanceMode === 'history' ? 'var(--clr-primary)' : 'transparent',
+                color: attendanceMode === 'history' ? '#fff' : 'var(--clr-text-secondary)'
+              }}
+            >
+              <FaHistory /> Attendance History
+            </button>
           </div>
 
-          {!isReadOnlyRole && (
+          {!isReadOnlyRole && attendanceMode !== 'history' && (
             <button className="btn-primary" onClick={handleSave} disabled={saving || loading || !selectedClass}>
               <FaSave /> {saving ? 'Saving...' : 'Save Attendance'}
             </button>
@@ -553,7 +621,7 @@ export default function StudentAttendance() {
       </div>
 
       {/* Daily Routine / Timetable Bar for Selected Class */}
-      {selectedClass && (
+      {attendanceMode !== 'history' && selectedClass && (
         <div className="glass-panel page-card mt-sm" style={{ padding: '14px 20px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--clr-glass-border)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, fontSize: '0.9rem' }}>
@@ -635,7 +703,7 @@ export default function StudentAttendance() {
       )}
 
       {/* Routine Banner */}
-      {selectedClass && (
+      {attendanceMode !== 'history' && selectedClass && (
         <div className="glass-panel page-card mt-sm flex items-center justify-between" style={{ padding: '12px 20px', background: currentScheduleObj ? 'rgba(0, 90, 158, 0.06)' : 'rgba(16, 185, 129, 0.06)', border: currentScheduleObj ? '1px solid rgba(0, 90, 158, 0.2)' : '1px solid rgba(16, 185, 129, 0.2)' }}>
           <div className="flex items-center gap-md flex-wrap">
             {currentScheduleObj ? (
@@ -665,7 +733,7 @@ export default function StudentAttendance() {
       )}
 
       {/* Quick Action Toolbar (Mark All) */}
-      {selectedClass && filteredStudents.length > 0 && !isReadOnlyRole && (
+      {attendanceMode !== 'history' && selectedClass && filteredStudents.length > 0 && !isReadOnlyRole && (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '14px 0 6px 0', flexWrap: 'wrap', gap: '10px' }}>
           <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--clr-text-secondary)' }}>
             Total Roster: <span style={{ color: 'var(--clr-primary)', fontWeight: 700 }}>{filteredStudents.length} Students</span>
@@ -713,45 +781,167 @@ export default function StudentAttendance() {
         </div>
       )}
 
-      {/* Table */}
-      <div className="glass-panel page-card mt-md">
-        {!selectedClass && !isReadOnlyRole ? (
-          <div style={{ textAlign: 'center', padding: '50px 20px', color: 'var(--clr-text-muted)' }}>
-            <FaLayerGroup style={{ fontSize: '2.5rem', marginBottom: '16px', opacity: 0.4, color: 'var(--clr-primary)' }} />
-            <h3 style={{ margin: '0 0 8px 0', color: 'var(--clr-text-primary)' }}>Select a Class & Section</h3>
-            <p style={{ margin: 0, fontSize: '0.9rem' }}>Choose your class above to view student roster and record attendance.</p>
+      {/* Attendance History View */}
+      {attendanceMode === 'history' ? (
+        <div className="glass-panel page-card mt-md">
+          {/* History Filters Bar */}
+          <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: '20px' }}>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '3px' }}><FaCalendarAlt /> From Date</label>
+              <input
+                type="date"
+                className="form-input"
+                style={{ width: 'auto' }}
+                value={historyStartDate}
+                onChange={(e) => setHistoryStartDate(e.target.value)}
+              />
+            </div>
+
+            <div className="form-group" style={{ margin: 0 }}>
+              <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '3px' }}><FaCalendarAlt /> To Date</label>
+              <input
+                type="date"
+                className="form-input"
+                style={{ width: 'auto' }}
+                value={historyEndDate}
+                onChange={(e) => setHistoryEndDate(e.target.value)}
+              />
+            </div>
+
+            <div className="form-group" style={{ margin: 0 }}>
+              <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '3px' }}>Status</label>
+              <select
+                className="form-input"
+                style={{ width: 'auto' }}
+                value={historyStatusFilter}
+                onChange={(e) => setHistoryStatusFilter(e.target.value)}
+              >
+                <option value="ALL">All Statuses</option>
+                <option value="Present">Present</option>
+                <option value="Absent">Absent</option>
+                <option value="Late">Late</option>
+              </select>
+            </div>
+
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={loadAttendanceHistory}
+              disabled={loadingHistory}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            >
+              <FaSync /> {loadingHistory ? 'Refreshing...' : 'Refresh History'}
+            </button>
+
+            <div style={{ marginLeft: 'auto', fontSize: '0.85rem', color: 'var(--clr-text-secondary)', alignSelf: 'center' }}>
+              Showing <strong style={{ color: 'var(--clr-primary)' }}>{filteredHistoryLogs.length}</strong> attendance records
+            </div>
           </div>
-        ) : (
+
           <div className="table-container">
             <table className="data-table">
               <thead>
                 <tr>
-                  <th scope="col" style={{ width: '50px' }}>S.No</th>
-                  <th scope="col">Student Info</th>
-                  <th scope="col" style={{ width: '300px' }}>Attendance Status</th>
-                  <th scope="col">Remarks</th>
+                  <th scope="col" style={{ width: '50px' }}>#</th>
+                  <th scope="col">Date</th>
+                  <th scope="col">Student Name</th>
+                  <th scope="col">Class / Session</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Recorded Remarks</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredStudents.length > 0 ? filteredStudents.map((s, idx) => {
-                  const draft = draftAttendance[s.id] || { status: 'Present', remarks: '' }
-                  const colors = STATUS_COLORS[draft.status] || STATUS_COLORS.Present
+                {filteredHistoryLogs.length > 0 ? filteredHistoryLogs.map((log, idx) => {
+                  const status = log.STU_PRES || log.ATT_STATUS || log.status || 'Present'
+                  const color = STATUS_COLORS[status] || STATUS_COLORS.Present
+                  const dateStr = log.STU_ATT_DT || log.ATT_DT || log.date || '—'
                   return (
-                    <tr key={s.id}>
+                    <tr key={log.STU_ATT_ID || log.ATT_ID || idx}>
                       <td>{idx + 1}</td>
                       <td>
-                        <div className="font-bold">{s.name}</div>
-                        <div className="text-muted" style={{ fontSize: '0.75rem' }}>ID / Roll: {s.rollNumber}</div>
+                        <span style={{ fontWeight: 600, color: 'var(--clr-text-primary)' }}>
+                          {dateStr}
+                        </span>
                       </td>
                       <td>
-                        {isReadOnlyRole ? (
-                          <span style={{ fontWeight: 'bold', padding: '4px 10px', borderRadius: '6px', background: colors.bg, color: colors.color }}>
-                            {draft.status}
-                          </span>
-                        ) : (
-                          <div className="flex gap-sm">
-                            {['Present', 'Absent', 'Late'].map(status => (
-                              <label key={status} className="flex items-center gap-sm" style={{ cursor: 'pointer', marginLeft: status !== 'Present' ? '12px' : 0 }}>
+                        <div style={{ fontWeight: 700 }}>{log.STU_NM || log.student_name || log.name || 'Student'}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--clr-text-muted)' }}>ID: {log.STU_STU_ID || log.ATT_STU_REF_ID || log.student_id || '—'}</div>
+                      </td>
+                      <td>
+                        <span className="badge badge-secondary">
+                          {log.class_name || log.className || (classes.find(c => String(c.id) === String(log.class_id))?.name) || 'Class'}
+                        </span>
+                      </td>
+                      <td>
+                        <span style={{
+                          fontWeight: 'bold',
+                          padding: '4px 10px',
+                          borderRadius: '6px',
+                          background: color.bg,
+                          color: color.color,
+                          display: 'inline-block'
+                        }}>
+                          {status}
+                        </span>
+                      </td>
+                      <td>
+                        <span className="text-muted" style={{ fontSize: '0.82rem' }}>
+                          {log.ATT_REMARKS || log.remarks || '—'}
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                }) : (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: 'var(--clr-text-muted)' }}>
+                      {loadingHistory ? 'Loading attendance history...' : 'No historical attendance records found matching filters.'}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        /* Regular Roll-Call / Period Table */
+        <div className="glass-panel page-card mt-md">
+          {!selectedClass && !isReadOnlyRole ? (
+            <div style={{ textAlign: 'center', padding: '50px 20px', color: 'var(--clr-text-muted)' }}>
+              <FaLayerGroup style={{ fontSize: '2.5rem', marginBottom: '16px', opacity: 0.4, color: 'var(--clr-primary)' }} />
+              <h3 style={{ margin: '0 0 8px 0', color: 'var(--clr-text-primary)' }}>Select a Class & Section</h3>
+              <p style={{ margin: 0, fontSize: '0.9rem' }}>Choose your class above to view student roster and record attendance.</p>
+            </div>
+          ) : (
+            <div className="table-container">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th scope="col" style={{ width: '50px' }}>S.No</th>
+                    <th scope="col">Student Info</th>
+                    <th scope="col" style={{ width: '300px' }}>Attendance Status</th>
+                    <th scope="col">Remarks</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredStudents.length > 0 ? filteredStudents.map((s, idx) => {
+                    const draft = draftAttendance[s.id] || { status: 'Present', remarks: '' }
+                    const colors = STATUS_COLORS[draft.status] || STATUS_COLORS.Present
+                    return (
+                      <tr key={s.id}>
+                        <td>{idx + 1}</td>
+                        <td>
+                          <div className="font-bold">{s.name}</div>
+                          <div className="text-muted" style={{ fontSize: '0.75rem' }}>ID / Roll: {s.rollNumber}</div>
+                        </td>
+                        <td>
+                          {isReadOnlyRole ? (
+                            <span style={{ fontWeight: 'bold', padding: '4px 10px', borderRadius: '6px', background: colors.bg, color: colors.color }}>
+                              {draft.status}
+                            </span>
+                          ) : (
+                            <div className="flex gap-sm">
+                              {['Present', 'Absent', 'Late'].map(status => (
+                                <label key={status} className="flex items-center gap-sm" style={{ cursor: 'pointer', marginLeft: status !== 'Present' ? '12px' : 0 }}>
                                 <input
                                   type="radio"
                                   name={`status-${s.id}`}
@@ -797,6 +987,7 @@ export default function StudentAttendance() {
           </div>
         )}
       </div>
+      )}
     </motion.div>
   )
 }

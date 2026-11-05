@@ -6,6 +6,7 @@ import { FaCalendarAlt, FaEdit, FaClock, FaPrint, FaTrash, FaUserCheck, FaLayerG
 
 
 import { toast } from 'react-toastify'
+import { useRealtime, useRealtimeSubscription } from '../../contexts/RealtimeContext'
 import { createPortal } from 'react-dom'
 
 const DEFAULT_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
@@ -98,11 +99,12 @@ export default function ClassSchedule() {
     }
   }, [role, navigate])
 
-  const isReadOnlyRole = role.includes('student') || role.includes('guardian') || role.includes('parent')
   const isTeacher = role.includes('teacher') || (currentUser?.role_id && String(currentUser.role_id).toUpperCase() === 'R_TEACHER')
+  const isReadOnlyRole = role.includes('student') || role.includes('guardian') || role.includes('parent') || isTeacher
   
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingSlot, setEditingSlot] = useState(null)
+  const { broadcastChange } = useRealtime()
   const [errors, setErrors] = useState({})
   const [formData, setFormData] = useState({ 
     SCHL_CLS_SCHLDL_ID: '',
@@ -112,6 +114,14 @@ export default function ClassSchedule() {
     SCHL_CLS_SCHDL_FRM_DT: '',
     SCHL_CLS_SCHDL_TO_DT: ''
   })
+
+  const refreshCurrentSchedule = useCallback(() => {
+    if (selectedClass) loadSchedule(selectedClass)
+  }, [selectedClass])
+
+  useRealtimeSubscription('routine', refreshCurrentSchedule)
+  useRealtimeSubscription('timetable', refreshCurrentSchedule)
+  useRealtimeSubscription('*', refreshCurrentSchedule)
 
   useEffect(() => {
     loadLookups()
@@ -219,6 +229,7 @@ export default function ClassSchedule() {
   }
 
   function openEditModal(day, periodId) {
+    if (isReadOnlyRole) return
     const period = activePeriods.find(p => p.id === periodId)
     const startTime = period.time.split(' - ')[0]
     const endTime = period.time.split(' - ')[1]
@@ -261,6 +272,10 @@ export default function ClassSchedule() {
       }
       setIsModalOpen(false)
       loadSchedule(selectedClass)
+      if (broadcastChange) {
+        broadcastChange('routine', { classId: selectedClass })
+        broadcastChange('timetable', { classId: selectedClass })
+      }
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Failed to update schedule')
     }
@@ -273,6 +288,10 @@ export default function ClassSchedule() {
       toast.success('Schedule entry deleted')
       setIsModalOpen(false)
       loadSchedule(selectedClass)
+      if (broadcastChange) {
+        broadcastChange('routine', { classId: selectedClass })
+        broadcastChange('timetable', { classId: selectedClass })
+      }
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Failed to delete schedule entry')
     }
@@ -471,7 +490,7 @@ export default function ClassSchedule() {
                               </>
                             ) : (
                               <div className="text-muted text-small opacity-50">
-                                {isTeacher ? (teacherFilterOnlyMine ? '—' : '+ Assign') : isReadOnlyRole ? 'No Class' : '+ Assign'}
+                                {isReadOnlyRole ? '—' : '+ Assign'}
                               </div>
                             )}
                           </div>

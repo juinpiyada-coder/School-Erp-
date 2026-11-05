@@ -1,5 +1,5 @@
 import axios from '../../lib/axios'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   BarChart,
@@ -29,6 +29,7 @@ import {
   FaArrowRight
 } from 'react-icons/fa'
 import { getGreeting } from '../../lib/timeGreeting'
+import { useRealtimeSubscription } from '../../contexts/RealtimeContext'
 
 // ─── Static Data ─────────────────────────────────────────────────────────────
 
@@ -87,79 +88,87 @@ export default function TeacherDashboard() {
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    const fetchTeacherRoutine = async () => {
-      setRoutinesLoading(true);
-      try {
-        const [schRes, clsRes, subRes, rmRes, tchrRes] = await Promise.allSettled([
-          axios.get(`${import.meta.env.VITE_API_BASE_URL}/academic/timetable`),
-          axios.get(`${import.meta.env.VITE_API_BASE_URL}/academic/classes`),
-          axios.get(`${import.meta.env.VITE_API_BASE_URL}/academic/subjects`),
-          axios.get(`${import.meta.env.VITE_API_BASE_URL}/academic/rooms`),
-          axios.get(`${import.meta.env.VITE_API_BASE_URL}/staff/teachers`)
-        ]);
+  const fetchTeacherRoutine = useCallback(async () => {
+    try {
+      const [schRes, clsRes, subRes, rmRes, tchrRes] = await Promise.allSettled([
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/academic/timetable`),
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/academic/classes?limit=1000`),
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/academic/subjects?limit=1000`),
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/academic/rooms?limit=1000`),
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/staff/teachers?limit=1000`)
+      ]);
 
-        const rawSchedule = schRes.status === 'fulfilled' ? (Array.isArray(schRes.value.data) ? schRes.value.data : schRes.value.data?.data || []) : [];
-        const classes = clsRes.status === 'fulfilled' ? (Array.isArray(clsRes.value.data) ? clsRes.value.data : clsRes.value.data?.data || []) : [];
-        const subjects = subRes.status === 'fulfilled' ? (Array.isArray(subRes.value.data) ? subRes.value.data : subRes.value.data?.data || []) : [];
-        const rooms = rmRes.status === 'fulfilled' ? (Array.isArray(rmRes.value.data) ? rmRes.value.data : rmRes.value.data?.data || []) : [];
-        const teachers = tchrRes.status === 'fulfilled' ? (Array.isArray(tchrRes.value.data) ? tchrRes.value.data : tchrRes.value.data?.data || []) : [];
+      const rawSchedule = schRes.status === 'fulfilled' ? (Array.isArray(schRes.value.data) ? schRes.value.data : schRes.value.data?.data || []) : [];
+      const classes = clsRes.status === 'fulfilled' ? (Array.isArray(clsRes.value.data) ? clsRes.value.data : clsRes.value.data?.data || []) : [];
+      const subjects = subRes.status === 'fulfilled' ? (Array.isArray(subRes.value.data) ? subRes.value.data : subRes.value.data?.data || []) : [];
+      const rooms = rmRes.status === 'fulfilled' ? (Array.isArray(rmRes.value.data) ? rmRes.value.data : rmRes.value.data?.data || []) : [];
+      const teachers = tchrRes.status === 'fulfilled' ? (Array.isArray(tchrRes.value.data) ? tchrRes.value.data : tchrRes.value.data?.data || []) : [];
 
-        // Match current teacher
-        const uid = String(currentUser.id || currentUser.user_id || '').toLowerCase();
-        const uemail = String(currentUser.email || currentUser.user_email_id || '').toLowerCase();
-        const uname = String(currentUser.name || currentUser.first_name || '').toLowerCase();
+      // Match current teacher from currentUser
+      const uid = String(currentUser.id || currentUser.user_id || currentUser.teacher_id || currentUser.teacherId || '').toLowerCase();
+      const uemail = String(currentUser.email || currentUser.user_email_id || '').toLowerCase();
+      const uname = String(currentUser.name || currentUser.first_name || '').toLowerCase();
 
-        const matchedTeacher = teachers.find(t => {
-          const tId = String(t.BR_TCHR_ID || t.br_tchr_id || t.TCHR_ID || t.tchr_id || t.id || '').toLowerCase();
-          const tEmail = String(t.BR_TCHR_EMAI_ID || t.TCHR_EMAIL || t.email || '').toLowerCase();
-          const tName = String(t.BR_TCHR_NM || t.br_tchr_nm || t.TCHR_NM || t.tchr_nm || t.name || '').toLowerCase();
-          return (tId && tId === uid) || (tEmail && tEmail === uemail) || (uname && tName === uname);
-        });
+      const matchedTeacher = teachers.find(t => {
+        const tId = String(t.BR_TCHR_ID || t.br_tchr_id || t.TCHR_ID || t.tchr_id || t.id || '').toLowerCase();
+        const tEmail = String(t.BR_TCHR_EMAI_ID || t.TCHR_EMAIL || t.email || '').toLowerCase();
+        const tName = String(t.BR_TCHR_NM || t.br_tchr_nm || t.TCHR_NM || t.tchr_nm || t.name || '').toLowerCase();
+        return (tId && tId === uid) || (tEmail && tEmail === uemail) || (uname && tName === uname);
+      });
 
-        const targetTeacherId = matchedTeacher ? String(matchedTeacher.BR_TCHR_ID || matchedTeacher.br_tchr_id || matchedTeacher.TCHR_ID || matchedTeacher.tchr_id || matchedTeacher.id) : null;
-        const targetTeacherName = (matchedTeacher ? (matchedTeacher.BR_TCHR_NM || matchedTeacher.name) : currentUser?.name || '').toLowerCase().trim();
+      const targetTeacherId = matchedTeacher ? String(matchedTeacher.BR_TCHR_ID || matchedTeacher.br_tchr_id || matchedTeacher.TCHR_ID || matchedTeacher.tchr_id || matchedTeacher.id) : (uid || null);
+      const targetTeacherName = (matchedTeacher ? (matchedTeacher.BR_TCHR_NM || matchedTeacher.name) : currentUser?.name || '').toLowerCase().trim();
 
-        const mySlots = rawSchedule.filter(slot => {
-          const slotTchrId = String(slot.SCHL_BR_TCHR_ID || slot.schl_br_tchr_id || '');
-          if (targetTeacherId && slotTchrId === targetTeacherId) return true;
-          const slotTchrName = String(slot.teacher_name || '').toLowerCase().trim();
-          if (targetTeacherName && slotTchrName && (slotTchrName === targetTeacherName || targetTeacherName.includes(slotTchrName))) {
-            return true;
-          }
-          return false;
-        }).map((slot, idx) => {
-          const sub = subjects.find(s => String(s.BR_CLS_SUB_ID || s.id) === String(slot.SCHL_CLS_SCHLDL_SUB_ID || slot.schl_cls_schldl_sub_id));
-          const cls = classes.find(c => String(c.SCHL_BR_CLS_ID || c.id) === String(slot.SCHL_CLS_SCHLDL_SEC_SESS_ID || slot.schl_cls_schldl_sec_sess_id));
-          const rm = rooms.find(r => String(r.SCHL_BR_RM_ID || r.id) === String(slot.SCHL_BR_RM_ID || slot.schl_br_rm_id));
-          return {
-            id: slot.SCHL_CLS_SCHLDL_ID || slot.id || idx,
-            day: slot.SCHL_DAY_OF_WK || slot.day || 'Monday',
-            fromTime: (slot.SCHL_CLS_SCHDL_FRM_DT || '08:00').substring(0, 5),
-            toTime: (slot.SCHL_CLS_SCHDL_TO_DT || '08:45').substring(0, 5),
-            time: `${(slot.SCHL_CLS_SCHDL_FRM_DT || '08:00').substring(0, 5)} - ${(slot.SCHL_CLS_SCHDL_TO_DT || '08:45').substring(0, 5)}`,
-            subject: sub?.BR_CLS_SUB_NAME || slot.subject_name || 'Subject',
-            class_name: cls?.SCHL_BR_CLASS_NM || slot.class_name || 'Assigned Class',
-            room: rm?.SCHL_BR_ROOM_DESC || slot.SCHL_BR_RM_ID || 'Classroom',
-          };
-        });
-
-        // Sort ascending by time
-        mySlots.sort((a, b) => a.fromTime.localeCompare(b.fromTime));
-
-        if (!cancelled) {
-          setTeacherRoutines(mySlots);
-          setRoutinesLoading(false);
+      const mySlots = rawSchedule.filter(slot => {
+        const slotTchrId = String(slot.SCHL_BR_TCHR_ID || slot.schl_br_tchr_id || '');
+        if (targetTeacherId && slotTchrId && String(slotTchrId) === String(targetTeacherId)) return true;
+        const slotTchrName = String(slot.teacher_name || '').toLowerCase().trim();
+        if (targetTeacherName && slotTchrName && (slotTchrName === targetTeacherName || targetTeacherName.includes(slotTchrName) || slotTchrName.includes(targetTeacherName))) {
+          return true;
         }
-      } catch (e) {
-        if (!cancelled) setRoutinesLoading(false);
-      }
-    };
+        return false;
+      }).map((slot, idx) => {
+        const subId = String(slot.SCHL_CLS_SCHLDL_SUB_ID || slot.schl_cls_schldl_sub_id || '');
+        const clsId = String(slot.SCHL_CLS_SCHLDL_SEC_SESS_ID || slot.schl_cls_schldl_sec_sess_id || '');
+        const rmId = String(slot.SCHL_BR_RM_ID || slot.schl_br_rm_id || '');
 
-    fetchTeacherRoutine();
-    return () => { cancelled = true; };
+        const sub = subjects.find(s => String(s.BR_CLS_SUB_ID || s.br_cls_sub_id || s.SUB_ID || s.id) === subId);
+        const cls = classes.find(c => String(c.SCHL_BR_CLS_ID || c.schl_br_cls_id || c.id) === clsId);
+        const rm = rooms.find(r => String(r.SCHL_BR_RM_ID || r.schl_br_rm_id || r.id) === rmId);
+
+        return {
+          id: slot.SCHL_CLS_SCHLDL_ID || slot.id || idx,
+          day: slot.SCHL_DAY_OF_WK || slot.day || 'Monday',
+          fromTime: (slot.SCHL_CLS_SCHDL_FRM_DT || '08:00').substring(0, 5),
+          toTime: (slot.SCHL_CLS_SCHDL_TO_DT || '08:45').substring(0, 5),
+          time: `${(slot.SCHL_CLS_SCHDL_FRM_DT || '08:00').substring(0, 5)} - ${(slot.SCHL_CLS_SCHDL_TO_DT || '08:45').substring(0, 5)}`,
+          subject: sub?.BR_CLS_SUB_NAME || sub?.name || slot.subject_name || 'Subject',
+          class_name: cls?.SCHL_BR_CLASS_NM || cls?.name || slot.class_name || 'Assigned Class',
+          room: rm?.SCHL_BR_ROOM_DESC || rm?.name || slot.SCHL_BR_RM_ID || 'Classroom',
+        };
+      });
+
+      // Sort ascending by time
+      mySlots.sort((a, b) => a.fromTime.localeCompare(b.fromTime));
+
+      setTeacherRoutines(mySlots);
+      setRoutinesLoading(false);
+    } catch (e) {
+      setRoutinesLoading(false);
+    }
   }, [currentUser]);
+
+  // Real-time listener for routine & timetable updates
+  useRealtimeSubscription('routine', fetchTeacherRoutine);
+  useRealtimeSubscription('timetable', fetchTeacherRoutine);
+  useRealtimeSubscription('*', fetchTeacherRoutine);
+
+  useEffect(() => {
+    fetchTeacherRoutine();
+    // Auto-refresh heartbeat every 15 seconds to ensure live parity
+    const timer = setInterval(fetchTeacherRoutine, 15000);
+    return () => clearInterval(timer);
+  }, [fetchTeacherRoutine]);
 
   const filteredTeacherRoutines = useMemo(() => {
     if (selectedDay === 'ALL') return teacherRoutines;

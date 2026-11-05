@@ -270,8 +270,8 @@ class StaffController {
                         else Response::error("Mapping not found", 404);
                     } else {
                         $page = isset($data['page']) ? (int)$data['page'] : 1;
-                        $limit = isset($data['limit']) ? (int)$data['limit'] : 10;
-                        if ($limit <= 0) $limit = 10;
+                        $limit = isset($data['limit']) ? (int)$data['limit'] : 1000;
+                        if ($limit <= 0) $limit = 1000;
                         if ($page <= 0) $page = 1;
                         $offset = ($page - 1) * $limit;
                         $items = $this->teacherSubjectModel->getAll($limit, $offset, $this->user);

@@ -36,9 +36,9 @@ export default function SubjectMapping() {
       const isBranchAdmin = (user.user_role || user.role_id) === 'R_BRANCHADMIN' || user.role === 'R_BRANCHADMIN'
 
       const [mapRes, tchrRes, subRes, brRes, clsRes] = await Promise.all([
-        axios.get(`${import.meta.env.VITE_API_BASE_URL}/staff/mappings`).catch(() => ({ data: [] })),
-        axios.get(`${import.meta.env.VITE_API_BASE_URL}/staff/teachers`).catch(() => ({ data: [] })),
-        axios.get(`${import.meta.env.VITE_API_BASE_URL}/academic/subjects`).catch(() => ({ data: [] })),
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/staff/mappings?limit=1000`).catch(() => ({ data: [] })),
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/staff/teachers?limit=1000`).catch(() => ({ data: [] })),
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/academic/subjects?limit=1000`).catch(() => ({ data: [] })),
         axios.get(`${import.meta.env.VITE_API_BASE_URL}/academic/branches?limit=1000`).catch(() => ({ data: [] })),
         axios.get(`${import.meta.env.VITE_API_BASE_URL}/academic/classes?limit=1000`).catch(() => ({ data: [] }))
       ])
@@ -60,10 +60,16 @@ export default function SubjectMapping() {
 
       if (isSchoolAdmin || isBranchAdmin) {
           const validBranchIds = branchList.map(b => String(b.SCHL_BR_ID || b.schl_br_id))
-          classList = classList.filter(c => validBranchIds.includes(String(c.SCHL_BR_CENT_ID || c.schl_br_cent_id || c.branchId)))
-          teacherList = teacherList.filter(t => validBranchIds.includes(String(t.BR_TCHR_BR_ID || t.br_tchr_br_id)))
-          const validTeacherIds = teacherList.map(t => String(t.BR_TCHR_ID || t.br_tchr_id || t.TCHR_ID || t.tchr_id || t.id))
-          mappingList = mappingList.filter(m => validTeacherIds.includes(String(m.TCHR_ID || m.tchr_id)))
+          if (validBranchIds.length > 0) {
+              classList = classList.filter(c => validBranchIds.includes(String(c.SCHL_BR_CENT_ID || c.schl_br_cent_id || c.branchId)))
+              teacherList = teacherList.filter(t => validBranchIds.includes(String(t.BR_TCHR_BR_ID || t.br_tchr_br_id)))
+              const validTeacherIds = teacherList.map(t => String(t.BR_TCHR_ID || t.br_tchr_id || t.TCHR_ID || t.tchr_id || t.id))
+              mappingList = mappingList.filter(m => {
+                  const mTeacherId = String(m.TCHR_ID || m.tchr_id || '')
+                  const mBranchId = String(m.branch_id || m.branchId || '')
+                  return (validTeacherIds.length === 0 || validTeacherIds.includes(mTeacherId)) || (mBranchId && validBranchIds.includes(mBranchId))
+              })
+          }
       }
 
       setMappings(mappingList)
@@ -111,6 +117,17 @@ export default function SubjectMapping() {
     if (branches.length > 0 && !formData.branchId) errs.branchId = 'Please select a branch.'
     if (!formData.TCHR_ID) errs.TCHR_ID = 'Please select a teacher.'
     if (!formData.TCHR_SUB_ID) errs.TCHR_SUB_ID = 'Please select a subject.'
+    // Prevent duplicate mapping of the exact same teacher to the exact same subject
+    const currentEditId = editingMapping ? (editingMapping.TCHR_SUB_MAP_ID || editingMapping.tchr_sub_map_id) : null
+    const duplicateMapping = mappings.find(m => {
+      const mapId = m.TCHR_SUB_MAP_ID || m.tchr_sub_map_id
+      const tId = m.TCHR_ID || m.tchr_id
+      const sId = m.TCHR_SUB_ID || m.tchr_sub_id
+      return String(tId) === String(formData.TCHR_ID) && String(sId) === String(formData.TCHR_SUB_ID) && (!currentEditId || String(mapId) !== String(currentEditId))
+    })
+    if (duplicateMapping) {
+      errs.TCHR_SUB_ID = 'This teacher is already mapped to this subject.'
+    }
     if (Object.keys(errs).length > 0) {
       setErrors(errs)
       return
@@ -286,7 +303,9 @@ export default function SubjectMapping() {
                     {teachers.filter(t => !formData.branchId || String(t.BR_TCHR_BR_ID || t.br_tchr_br_id) === String(formData.branchId)).map(t => {
                       const tId = t.BR_TCHR_ID || t.br_tchr_id || t.TCHR_ID || t.tchr_id || t.id;
                       const tName = t.BR_TCHR_NM || t.br_tchr_nm || t.TCHR_NM || t.tchr_nm || t.name;
-                      return <option key={tId} value={tId}>{tName}</option>
+                      const teacherMappings = mappings.filter(m => String(m.TCHR_ID || m.tchr_id) === String(tId));
+                      const mappedCount = teacherMappings.length;
+                      return <option key={tId} value={tId}>{tName}{mappedCount > 0 ? ` (${mappedCount} subject${mappedCount > 1 ? 's' : ''} assigned)` : ''}</option>
                     })}
                   </select>
                   {errors.TCHR_ID && <span className="form-error-msg">{errors.TCHR_ID}</span>}

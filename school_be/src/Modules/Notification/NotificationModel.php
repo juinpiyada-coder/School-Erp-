@@ -68,11 +68,11 @@ class NotificationModel {
             if ($sRow = $sStmt->fetch(PDO::FETCH_ASSOC)) {
                 $schoolId = $sRow['SCHL_MN_ID'];
             }
-        } elseif ($role === 'R_TEACHER') {
-            $tStmt = $this->db->prepare("SELECT t.SCHL_TCHR_ID, t.SCHL_TCHR_BR_ID, b.SCHL_BR_CENTER_ID FROM SCHL_BR_TCHR t LEFT JOIN SCHL_BRANCH b ON t.SCHL_TCHR_BR_ID = b.SCHL_BR_ID WHERE t.BR_TCHR_ID = ? OR t.BR_TCHR_EMAI_ID = ? LIMIT 1");
+        } elseif ($role === 'R_TEACHER' || strpos($role, 'TEACHER') !== false) {
+            $tStmt = $this->db->prepare("SELECT t.BR_TCHR_ID, t.BR_TCHR_BR_ID, b.SCHL_BR_CENTER_ID FROM SCHL_BR_TCHR t LEFT JOIN SCHL_BRANCH b ON t.BR_TCHR_BR_ID = b.SCHL_BR_ID WHERE t.BR_TCHR_ID = ? OR t.BR_TCHR_EMAI_ID = ? LIMIT 1");
             $tStmt->execute([$user['user_id'], $user['user_email_id']]);
             if ($tRow = $tStmt->fetch(PDO::FETCH_ASSOC)) {
-                $branchId = $tRow['SCHL_TCHR_BR_ID'];
+                $branchId = $tRow['BR_TCHR_BR_ID'];
                 $schoolId = $schoolId ?: $tRow['SCHL_BR_CENTER_ID'];
             }
         } elseif ($role === 'R_STUDENT') {
