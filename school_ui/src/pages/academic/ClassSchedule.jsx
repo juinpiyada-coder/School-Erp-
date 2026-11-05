@@ -83,7 +83,7 @@ export default function ClassSchedule() {
   const [loading, setLoading] = useState(false)
   const [role, setRole] = useState('')
   const [currentUser, setCurrentUser] = useState(null)
-  const [teacherFilterOnlyMine, setTeacherFilterOnlyMine] = useState(true)
+  const [teacherFilterOnlyMine, setTeacherFilterOnlyMine] = useState(false)
 
   useEffect(() => {
     try {
@@ -100,7 +100,9 @@ export default function ClassSchedule() {
   }, [role, navigate])
 
   const isTeacher = role.includes('teacher') || (currentUser?.role_id && String(currentUser.role_id).toUpperCase() === 'R_TEACHER')
-  const isReadOnlyRole = role.includes('student') || role.includes('guardian') || role.includes('parent') || isTeacher
+  const isStudentOrParent = role.includes('student') || role.includes('guardian') || role.includes('parent')
+  const isEditingDisabled = isStudentOrParent || isTeacher
+  const isReadOnlyRole = isEditingDisabled
   
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingSlot, setEditingSlot] = useState(null)
@@ -138,12 +140,12 @@ export default function ClassSchedule() {
   async function loadLookups() {
     try {
       const [clsRes, tchrRes, rmRes, subRes, branchRes, matRes, mapRes] = await Promise.all([
-        axios.get(`${import.meta.env.VITE_API_BASE_URL}/academic/classes`),
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/academic/classes?limit=1000`),
         axios.get(`${import.meta.env.VITE_API_BASE_URL}/staff/teachers`),
         axios.get(`${import.meta.env.VITE_API_BASE_URL}/academic/rooms`),
         axios.get(`${import.meta.env.VITE_API_BASE_URL}/academic/subjects`),
         axios.get(`${import.meta.env.VITE_API_BASE_URL}/academic/branches`),
-        axios.get(`${import.meta.env.VITE_API_BASE_URL}/academic/matrices`).catch(() => ({ data: [] })),
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/academic/matrices?limit=1000`).catch(() => ({ data: [] })),
         axios.get(`${import.meta.env.VITE_API_BASE_URL}/staff/mappings`).catch(() => ({ data: [] }))
       ])
       
@@ -198,7 +200,55 @@ export default function ClassSchedule() {
   const currentClassObj = classes.find(c => String(c.SCHL_BR_CLS_ID || c.schl_br_cls_id || c.id) === String(selectedClass))
   const currentMatrix = matrices.find(m => String(m.SCHL_MAT_ID || m.schl_mat_id) === String(currentClassObj?.matrixId))
   
-  const activePeriods = currentMatrix ? generatePeriodsFromMatrix(currentMatrix) : DEFAULT_PERIODS
+  const basePeriods = currentMatrix ? generatePeriodsFromMatrix(currentMatrix) : DEFAULT_PERIODS
+
+  // Dynamically integrate any saved timetable slots into the periods so that EVERY class period has a row
+  const activePeriods = useMemo(() => {
+    const list = [...basePeriods]
+    
+    // Check all start times present in schedule
+    schedule.forEach(s => {
+      const sFrom = (s.SCHL_CLS_SCHDL_FRM_DT || s.schl_cls_schdl_frm_dt || '').substring(0, 5)
+      const sTo = (s.SCHL_CLS_SCHDL_TO_DT || s.schl_cls_schdl_to_dt || '').substring(0, 5)
+      if (!sFrom) return
+
+      // See if this slot already matches any existing period exactly or by close overlap
+      const matchesExisting = list.some(p => {
+        const pFrom = p.time.split(' - ')[0]
+        const pTo = p.time.split(' - ')[1]
+        if (pFrom === sFrom) return true
+        if (pFrom && pTo && sFrom >= pFrom && sFrom < pTo) return true
+        return false
+      })
+
+      if (!matchesExisting) {
+        list.push({
+          id: `custom_${sFrom}`,
+          time: sTo ? `${sFrom} - ${sTo}` : `${sFrom} - ${sFrom}`,
+          label: `Period (${sFrom})`,
+          isBreak: false
+        })
+      }
+    })
+
+    // Sort periods chronologically by start time
+    list.sort((a, b) => {
+      const aTime = a.time.split(' - ')[0] || '00:00'
+      const bTime = b.time.split(' - ')[0] || '00:00'
+      return aTime.localeCompare(bTime)
+    })
+
+    // Re-index non-break labels for clean display
+    let pIdx = 1
+    return list.map(p => {
+      if (p.isBreak) return p
+      return {
+        ...p,
+        label: String(p.id).startsWith('custom_') ? `Period ${pIdx++}` : (p.label || `Period ${pIdx++}`)
+      }
+    })
+  }, [basePeriods, schedule])
+
   const activeDays = currentMatrix?.SCHL_WEEKOFDAY 
     ? currentMatrix.SCHL_WEEKOFDAY.split(',').map(d => d.trim()).filter(Boolean)
     : DEFAULT_DAYS
@@ -220,12 +270,25 @@ export default function ClassSchedule() {
   function getSlotData(day, periodId) {
     const period = activePeriods.find(p => p.id === periodId)
     if (!period) return null
-    const startTime = period.time.split(' - ')[0]
+    const [pFrom, pTo] = period.time.split(' - ')
     
-    return schedule.find(s => 
-      (s.SCHL_DAY_OF_WK === day || s.schl_day_of_wk === day) &&
-      (s.SCHL_CLS_SCHDL_FRM_DT === startTime || s.schl_cls_schdl_frm_dt === startTime)
-    )
+    // 1. Exact start-time match
+    let found = schedule.find(s => {
+      const sDay = s.SCHL_DAY_OF_WK || s.schl_day_of_wk
+      const sFrom = (s.SCHL_CLS_SCHDL_FRM_DT || s.schl_cls_schdl_frm_dt || '').substring(0, 5)
+      return sDay && sDay.toLowerCase() === day.toLowerCase() && sFrom === pFrom
+    })
+
+    // 2. Fallback: match by interval overlap if not found
+    if (!found && pFrom && pTo) {
+      found = schedule.find(s => {
+        const sDay = s.SCHL_DAY_OF_WK || s.schl_day_of_wk
+        const sFrom = (s.SCHL_CLS_SCHDL_FRM_DT || s.schl_cls_schdl_frm_dt || '').substring(0, 5)
+        return sDay && sDay.toLowerCase() === day.toLowerCase() && sFrom >= pFrom && sFrom < pTo
+      })
+    }
+
+    return found || null
   }
 
   function openEditModal(day, periodId) {
@@ -351,10 +414,10 @@ export default function ClassSchedule() {
           <p className="page-subtitle">View and manage timetables</p>
         </div>
         <div className="flex gap-md items-center flex-wrap no-print">
-          {isReadOnlyRole ? (
+          {isStudentOrParent ? (
             <div style={{ display: 'flex', gap: '16px', fontSize: '0.9rem' }}>
               <span style={{ padding: '6px 14px', background: 'rgba(59, 130, 246, 0.15)', color: '#3b82f6', borderRadius: '20px', fontWeight: 600 }}>
-                📍 Branch: Enrolled Campus (Locked)
+                📍 Branch: {branches.find(b => String(b.id) === String(selectedBranch))?.name || 'Enrolled Campus'} (Locked)
               </span>
               <span style={{ padding: '6px 14px', background: 'rgba(139, 92, 246, 0.15)', color: '#8b5cf6', borderRadius: '20px', fontWeight: 600 }}>
                 🎓 Class: {classes.find(c => String(c.SCHL_BR_CLS_ID || c.schl_br_cls_id || c.id) === String(selectedClass))?.SCHL_BR_CLASS_NM || 'Assigned Class'} (Locked)

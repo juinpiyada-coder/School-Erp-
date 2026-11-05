@@ -7,7 +7,7 @@ import {
   FaQuestionCircle, FaSignOutAlt, FaUserCircle, FaBuilding, FaCodeBranch, 
   FaDoorOpen, FaChalkboard, FaCalendarAlt, FaBook, FaExchangeAlt, 
   FaUserGraduate, FaChartBar, FaBell, FaUser, FaChevronLeft, FaChevronRight,
-  FaSearch, FaLink, FaMoneyBillWave
+  FaSearch, FaLink, FaMoneyBillWave, FaClock
 } from 'react-icons/fa'
 import { toast } from 'react-toastify'
 import { useWhitelabel } from '../../contexts/WhitelabelContext'
@@ -150,7 +150,8 @@ const ROLES_CONFIG = {
   TEACHER: [
     { label: 'Overview', items: [{ to: '/', icon: FaHome, label: 'Dashboard' }] },
     { label: 'Academics & Routine', items: [
-      { to: '/academic/schedule', icon: FaCalendarAlt, label: 'View Routine & Schedule' },
+      { to: '/teacher/routine', icon: FaClock, label: 'My Daily Routine' },
+      { to: '/academic/schedule', icon: FaCalendarAlt, label: 'Master Class Schedule' },
       { to: '/school/classes', icon: FaChalkboard, label: 'My Classes' }
     ]},
     { label: 'Attendance & Leaves', items: [

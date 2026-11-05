@@ -79,10 +79,17 @@ class MatrixModel {
                 $sql .= " AND (m.SCHL_MAT_SCHOOL_ID = ? OR b.SCHL_BR_CENTER_ID = ?)";
                 $params[] = $userId;
                 $params[] = $userId;
-            } elseif ($roleId === 'R_BRANCHADMIN' || $roleId === 'R_BRANCHEXECUTIVE' || $roleId === 'R_BRANCHOFFICIAL' || $roleId === 'R_TEACHER') {
+            } elseif ($roleId === 'R_BRANCHADMIN' || $roleId === 'R_BRANCHEXECUTIVE' || $roleId === 'R_BRANCHOFFICIAL' || $roleId === 'R_TEACHER' || strpos($roleId, 'TEACHER') !== false) {
+                // If user is a teacher, their branchId is stored in $user['branch_id'], or lookup from SCHL_BR_TCHR
+                $targetBranchId = $user['branch_id'] ?? null;
+                if (!$targetBranchId) {
+                    $tStmt = $this->db->prepare("SELECT BR_TCHR_BR_ID FROM SCHL_BR_TCHR WHERE BR_TCHR_ID = ? OR BR_TCHR_EMAI_ID = ? LIMIT 1");
+                    $tStmt->execute([$userId, $user['email'] ?? '']);
+                    $targetBranchId = $tStmt->fetchColumn() ?: $userId;
+                }
                 $sql .= " AND (m.SCHL_MAT_BRANCH_ID = ? OR (m.SCHL_MAT_BRANCH_ID IS NULL AND (m.SCHL_MAT_SCHOOL_ID = (SELECT SCHL_BR_CENTER_ID FROM SCHL_BRANCH WHERE SCHL_BR_ID = ? LIMIT 1))))";
-                $params[] = $userId;
-                $params[] = $userId;
+                $params[] = $targetBranchId;
+                $params[] = $targetBranchId;
             }
         }
         $sql .= " ORDER BY m.SCHL_UNIQ_MATRIX_NM ASC, m.SCHL_MAT_ID ASC";
@@ -106,10 +113,17 @@ class MatrixModel {
                 $sql .= " AND (m.SCHL_MAT_SCHOOL_ID = ? OR b.SCHL_BR_CENTER_ID = ?)";
                 $params[] = $userId;
                 $params[] = $userId;
-            } elseif ($roleId === 'R_BRANCHADMIN' || $roleId === 'R_BRANCHEXECUTIVE' || $roleId === 'R_BRANCHOFFICIAL' || $roleId === 'R_TEACHER') {
+            } elseif ($roleId === 'R_BRANCHADMIN' || $roleId === 'R_BRANCHEXECUTIVE' || $roleId === 'R_BRANCHOFFICIAL' || $roleId === 'R_TEACHER' || strpos($roleId, 'TEACHER') !== false) {
+                // If user is a teacher, their branchId is stored in $user['branch_id'], or lookup from SCHL_BR_TCHR
+                $targetBranchId = $user['branch_id'] ?? null;
+                if (!$targetBranchId) {
+                    $tStmt = $this->db->prepare("SELECT BR_TCHR_BR_ID FROM SCHL_BR_TCHR WHERE BR_TCHR_ID = ? OR BR_TCHR_EMAI_ID = ? LIMIT 1");
+                    $tStmt->execute([$userId, $user['email'] ?? '']);
+                    $targetBranchId = $tStmt->fetchColumn() ?: $userId;
+                }
                 $sql .= " AND (m.SCHL_MAT_BRANCH_ID = ? OR (m.SCHL_MAT_BRANCH_ID IS NULL AND (m.SCHL_MAT_SCHOOL_ID = (SELECT SCHL_BR_CENTER_ID FROM SCHL_BRANCH WHERE SCHL_BR_ID = ? LIMIT 1))))";
-                $params[] = $userId;
-                $params[] = $userId;
+                $params[] = $targetBranchId;
+                $params[] = $targetBranchId;
             }
         }
         $stmt = $this->db->prepare($sql);

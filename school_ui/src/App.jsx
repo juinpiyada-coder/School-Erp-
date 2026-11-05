@@ -55,6 +55,7 @@ const ClassSchedule = lazyRetry(() => import('./pages/academic/ClassSchedule'))
 const Teachers = lazyRetry(() => import('./pages/staff/Teachers'))
 const SubjectMapping = lazyRetry(() => import('./pages/staff/SubjectMapping'))
 const TeacherAttendance = lazyRetry(() => import('./pages/staff/Attendance'))
+const TeacherDailyRoutine = lazyRetry(() => import('./pages/staff/DailyRoutine'))
 const Parents = lazyRetry(() => import('./pages/student/Parents'))
 const Students = lazyRetry(() => import('./pages/student/Students'))
 const StudentAttendance = lazyRetry(() => import('./pages/student/StudentAttendance'))
@@ -146,6 +147,7 @@ export default function App() {
                 {/* Teacher Management */}
                 <Route path="/teacher/teachers" element={<Teachers />} />
                 <Route path="/teacher/mapping" element={<SubjectMapping />} />
+                <Route path="/teacher/routine" element={<TeacherDailyRoutine />} />
 
                 {/* Parent & Student Management (Admin) */}
                 <Route path="/parent/parents" element={<Parents />} />

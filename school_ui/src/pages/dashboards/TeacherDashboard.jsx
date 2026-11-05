@@ -249,9 +249,9 @@ export default function TeacherDashboard() {
                 type="button"
                 className="section-link"
                 style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                onClick={() => navigate('/academic/schedule')}
+                onClick={() => navigate('/teacher/routine')}
               >
-                Full Timetable <FaArrowRight style={{ fontSize: '0.75rem' }} />
+                Full Routine <FaArrowRight style={{ fontSize: '0.75rem' }} />
               </button>
             </div>
           </div>
