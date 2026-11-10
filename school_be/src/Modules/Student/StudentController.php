@@ -1536,4 +1536,300 @@ class StudentController {
             Response::error("Failed to retrieve parent student analytics: " . $e->getMessage(), 500);
         }
     }
+
+    /**
+     * Handle Download Template for Bulk Upload
+     */
+    public function handleBulkTemplate($method) {
+        if ($method !== 'GET') {
+            Response::error("Method not allowed", 405);
+        }
+
+        $headers = [
+            "Student Name*",
+            "Class Name*",
+            "Section Name*",
+            "Roll Number",
+            "Gender (M/F/Other)*",
+            "Date of Birth (YYYY-MM-DD)*",
+            "Aadhar Number",
+            "Student Email",
+            "Student Phone*",
+            "Address",
+            "City",
+            "State",
+            "Pincode",
+            "Country",
+            "Guardian Name*",
+            "Guardian Phone*",
+            "Guardian Email",
+            "Relation With Guardian",
+            "Target Branch ID"
+        ];
+
+        $sampleRow = [
+            "John Doe",
+            "Grade 10",
+            "Section A",
+            "1001",
+            "M",
+            "2010-05-15",
+            "123456789012",
+            "john.doe@example.com",
+            "9876543210",
+            "123 Main Street",
+            "Mumbai",
+            "Maharashtra",
+            "400001",
+            "India",
+            "Robert Doe",
+            "9876543211",
+            "robert.doe@example.com",
+            "Father",
+            ""
+        ];
+
+        Response::success("Bulk template schema", [
+            'columns' => $headers,
+            'sample' => $sampleRow
+        ]);
+    }
+
+    /**
+     * Handle Bulk Student Upload with Multi-Tenancy & Rate Limiting
+     */
+    public function handleBulkUpload($method, $data) {
+        if ($method !== 'POST') {
+            Response::error("Method not allowed. Use POST.", 405);
+        }
+
+        // 1. Rate Limiting Check
+        $rateCheck = RateLimiter::check('student_bulk_upload', $this->user['userId'] ?? null, 10, 600);
+        if (!$rateCheck['allowed']) {
+            Response::error("Upload rate limit exceeded. Please wait {$rateCheck['retry_after']} seconds before trying again.", 429, [
+                'retry_after' => $rateCheck['retry_after']
+            ]);
+        }
+
+        // 2. Resolve Multi-Tenancy Constraints
+        $userRole = strtoupper($this->user['role_id'] ?? $this->user['user_role'] ?? '');
+        $userBranchId = $this->user['branch_id'] ?? $this->user['user_branch_id'] ?? null;
+        $isSchoolAdmin = in_array($userRole, ['R_SCHOOLADMIN', 'SCHOOL_ADMIN', 'SUPER_ADMIN']);
+        $isBranchAdmin = in_array($userRole, ['R_BRANCHADMIN', 'BRANCH_ADMIN']);
+
+        if (!$isSchoolAdmin && !$isBranchAdmin) {
+            Response::error("Permission denied. Only School Admin and Branch Admin can perform student bulk upload.", 403);
+        }
+
+        // Extract student records from request (support direct json payload or nested 'students' / 'rows')
+        $studentsList = [];
+        if (isset($data['students']) && is_array($data['students'])) {
+            $studentsList = $data['students'];
+        } elseif (isset($data['rows']) && is_array($data['rows'])) {
+            $studentsList = $data['rows'];
+        } elseif (is_array($data) && isset($data[0])) {
+            $studentsList = $data;
+        }
+
+        if (empty($studentsList)) {
+            Response::error("No student records found in request payload.", 400);
+        }
+
+        // Target branch selection (School admin can provide overall branch or per row; branch admin is locked)
+        $defaultTargetBranch = $data['branch_id'] ?? $data['target_branch_id'] ?? null;
+        if ($isBranchAdmin) {
+            if (empty($userBranchId)) {
+                // If branch admin has no branch_id in token, lookup from user record
+                $userModel = new User();
+                $usr = $userModel->getById($this->user['userId']);
+                $userBranchId = $usr['user_branch_id'] ?? null;
+            }
+            if (empty($userBranchId)) {
+                Response::error("Branch Administrator is not bound to a valid branch.", 403);
+            }
+            $defaultTargetBranch = $userBranchId;
+        }
+
+        $db = $this->studentModel->getDb();
+        $db->beginTransaction();
+
+        $successList = [];
+        $failedList = [];
+        $rowNum = 1;
+
+        try {
+            foreach ($studentsList as $row) {
+                $rowNum++; // 1-indexed header is row 1, data starts row 2
+
+                // Determine branch for this row
+                $rowBranch = $row['branch_id'] ?? $row['target_branch_id'] ?? $row['Branch ID'] ?? $defaultTargetBranch;
+                if ($isBranchAdmin && !empty($rowBranch) && $rowBranch !== $userBranchId) {
+                    $failedList[] = [
+                        'row' => $rowNum,
+                        'name' => $row['STU_NM'] ?? $row['Student Name'] ?? $row['name'] ?? 'Unknown',
+                        'reason' => "Unauthorized: You cannot upload students to branch '{$rowBranch}'. Your branch is '{$userBranchId}'."
+                    ];
+                    continue;
+                }
+
+                $activeBranch = $isBranchAdmin ? $userBranchId : ($rowBranch ?: $defaultTargetBranch);
+                if (empty($activeBranch)) {
+                    $failedList[] = [
+                        'row' => $rowNum,
+                        'name' => $row['STU_NM'] ?? $row['Student Name'] ?? $row['name'] ?? 'Unknown',
+                        'reason' => "Target branch is required. Please select or specify a valid Branch ID."
+                    ];
+                    continue;
+                }
+
+                // Extract & normalize student fields
+                $stuName = trim($row['STU_NM'] ?? $row['Student Name'] ?? $row['name'] ?? '');
+                $className = trim($row['class_name'] ?? $row['Class Name'] ?? $row['className'] ?? $row['grade'] ?? '');
+                $sectionName = trim($row['section_name'] ?? $row['Section Name'] ?? $row['section'] ?? '');
+                $classSessionId = trim($row['STU_BR_CLASS_ID'] ?? $row['class_session_id'] ?? $row['Class Session ID'] ?? '');
+                $gender = strtoupper(trim($row['STU_GENDER'] ?? $row['Gender'] ?? $row['gender'] ?? 'M'));
+                $dob = trim($row['STU_DOB'] ?? $row['Date of Birth'] ?? $row['dob'] ?? '');
+                $contact = trim($row['STU_CONTACTNO'] ?? $row['Student Phone'] ?? $row['phone'] ?? $row['contact'] ?? '');
+                $email = trim($row['STU_EMAILID'] ?? $row['Student Email'] ?? $row['email'] ?? '');
+                $aadhar = trim($row['STU_AADHAR'] ?? $row['Aadhar Number'] ?? $row['aadhar'] ?? '');
+                $rollNo = trim($row['roll_number'] ?? $row['Roll Number'] ?? $row['rollNo'] ?? '');
+                $address = trim($row['STU_ADDRESS'] ?? $row['Address'] ?? $row['address'] ?? '');
+                $city = trim($row['STU_CITY'] ?? $row['City'] ?? $row['city'] ?? '');
+                $state = trim($row['STU_STATE'] ?? $row['State'] ?? $row['state'] ?? '');
+                $pin = trim($row['STU_PIN'] ?? $row['Pincode'] ?? $row['pin'] ?? '');
+                $country = trim($row['STU_COUNTRY'] ?? $row['Country'] ?? $row['country'] ?? 'India');
+
+                // Guardian info
+                $guardianName = trim($row['guardianName'] ?? $row['Guardian Name'] ?? $row['PRNT_NM'] ?? '');
+                $guardianPhone = trim($row['guardianPhone'] ?? $row['Guardian Phone'] ?? $row['PRNT_CONTACT_NO'] ?? '');
+                $guardianEmail = trim($row['guardianEmail'] ?? $row['Guardian Email'] ?? $row['PRNT_EMAIL'] ?? '');
+                $relation = trim($row['relationWithGuardian'] ?? $row['Relation With Guardian'] ?? $row['relation'] ?? 'Parent');
+
+                // Basic validation
+                if (empty($stuName)) {
+                    $failedList[] = ['row' => $rowNum, 'name' => 'Empty Name', 'reason' => 'Student Name is required'];
+                    continue;
+                }
+
+                // Resolve class session ID dynamically if name given
+                if (empty($classSessionId) && !empty($className)) {
+                    $classSessionId = $this->studentModel->resolveClassSession($activeBranch, $className, $sectionName, $this->user['userId'] ?? null);
+                }
+
+                if (empty($classSessionId)) {
+                    $failedList[] = [
+                        'row' => $rowNum,
+                        'name' => $stuName,
+                        'reason' => "Could not find class session matching Class '{$className}' and Section '{$sectionName}' in branch '{$activeBranch}'."
+                    ];
+                    continue;
+                }
+
+                // Normalise DOB
+                if (!empty($dob)) {
+                    $parsedTime = strtotime($dob);
+                    if ($parsedTime !== false) {
+                        $dob = date('Y-m-d', $parsedTime);
+                    } else {
+                        $dob = '2015-01-01';
+                    }
+                } else {
+                    $dob = '2015-01-01';
+                }
+
+                // Normalise Gender
+                if (!in_array($gender, ['M', 'F', 'OTHER', 'O'])) {
+                    $gender = 'M';
+                }
+                if ($gender === 'O') $gender = 'OTHER';
+
+                // Handle Parent / Guardian de-duplication or creation
+                $parentId = null;
+                if (!empty($guardianPhone) || !empty($guardianName)) {
+                    // Check if parent with same contact exists
+                    if (!empty($guardianPhone)) {
+                        $stmtP = $db->prepare("SELECT PRNT_ID FROM SCHL_MSTR_PRNT WHERE PRNT_CONTACTNO = ? OR PRNT_CONTACTNO = ? LIMIT 1");
+                        $stmtP->execute([$guardianPhone, $contact]);
+                        $foundP = $stmtP->fetch(PDO::FETCH_ASSOC);
+                        if ($foundP && !empty($foundP['PRNT_ID'])) {
+                            $parentId = $foundP['PRNT_ID'];
+                        }
+                    }
+
+                    if (empty($parentId) && !empty($guardianName)) {
+                        $parentId = strtoupper(uniqid('PRNT_'));
+                        $parentPayload = [
+                            'PRNT_ID' => $parentId,
+                            'PRNT_NM' => $guardianName,
+                            'PRNT_CONTACT_NO' => $guardianPhone ?: ($contact ?: '0000000000'),
+                            'PRNT_EMAIL' => $guardianEmail ?: ($email ?: null),
+                            'PRNT_CREATEDBY' => $this->user['userId'] ?? null,
+                            'PRNT_BRANCH_ID' => $activeBranch
+                        ];
+                        $this->parentModel->create($parentPayload);
+                    }
+                }
+
+                // Create Student Record
+                $studentId = strtoupper(uniqid('STU_'));
+                $studentPayload = [
+                    'STU_ID' => $studentId,
+                    'STU_NM' => $stuName,
+                    'STU_BR_CLASS_ID' => $classSessionId,
+                    'STU_PRNT_ID' => $parentId,
+                    'STU_GENDER' => $gender,
+                    'STU_DOB' => $dob,
+                    'STU_CONTACTNO' => $contact ?: '0000000000',
+                    'STU_EMAILID' => $email ?: ($studentId . '@school.local'),
+                    'STU_AADHAR' => substr($aadhar, 0, 12),
+                    'STU_ADDRESS' => $address,
+                    'STU_CITY' => $city,
+                    'STU_STATE' => $state,
+                    'STU_PIN' => is_numeric($pin) ? (int)$pin : 0,
+                    'STU_COUNTRY' => $country ?: 'India',
+                    'STU_RELATION_WITH_GUARDIAN' => $relation,
+                    'STU_CREATEDBY' => $this->user['userId'] ?? null
+                ];
+
+                $this->studentModel->create($studentPayload);
+
+                // Auto-create Student Portal Login
+                $studentUserId = strtolower($studentId);
+                try {
+                    $userModel = new User();
+                    $userModel->create([
+                        'user_id' => $studentUserId,
+                        'user_email_id' => $studentPayload['STU_EMAILID'],
+                        'user_first_name' => $stuName,
+                        'user_role' => 'R_STUDENT',
+                        'user_passwd' => 'Student@123',
+                        'user_branch_id' => $activeBranch
+                    ]);
+                } catch (Exception $userEx) {
+                    // Non-blocking for user login
+                }
+
+                $successList[] = [
+                    'id' => $studentId,
+                    'name' => $stuName,
+                    'class_session_id' => $classSessionId,
+                    'branch_id' => $activeBranch
+                ];
+            }
+
+            $db->commit();
+
+            Response::success("Bulk student upload process completed", [
+                'totalProcessed' => count($studentsList),
+                'successCount' => count($successList),
+                'failedCount' => count($failedList),
+                'successful' => $successList,
+                'failures' => $failedList
+            ], 200);
+
+        } catch (Exception $ex) {
+            $db->rollBack();
+            Response::error("Failed to process bulk upload: " . $ex->getMessage(), 500);
+        }
+    }
 }

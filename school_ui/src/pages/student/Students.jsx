@@ -10,6 +10,7 @@ import Modal from '../../components/common/Modal'
 import ConfirmModal from '../../components/common/ConfirmModal'
 import { ApiErrorState } from '../../components/common/ErrorBoundary'
 import { scrollToFirstError } from '../../lib/formValidation'
+import StudentBulkUploadModal from '../../components/student/StudentBulkUploadModal'
 
 const AVATAR_CLRS = ['avatar-blue', 'avatar-green', 'avatar-orange', 'avatar-purple', 'avatar-teal']
 
@@ -111,6 +112,7 @@ export default function Students() {
   const [parents, setParents] = useState([])
   const [error, setError] = useState('')
   const [idCardStudent, setIdCardStudent] = useState(null)
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false)
 
   const printIdCardRef = useRef(null)
 
@@ -520,7 +522,7 @@ export default function Students() {
           <p className="page-subtitle">{loading ? 'Loading...' : `${students.length} students enrolled across grades`}</p>
         </div>
         <div className="flex gap-md">
-          <button id="import-students-btn" className="btn-secondary"><FaUpload /> Import</button>
+          <button id="import-students-btn" className="btn-secondary" onClick={() => setIsBulkModalOpen(true)}><FaUpload /> Import</button>
           <button id="add-student-btn" className="btn-primary" onClick={() => openModal()}><FaPlus /> Enrol Student</button>
         </div>
       </div>
@@ -1128,6 +1130,19 @@ export default function Students() {
           </Modal>
         )
       })()}
+
+      {/* Student Bulk Upload Modal */}
+      <StudentBulkUploadModal
+        isOpen={isBulkModalOpen}
+        onClose={() => setIsBulkModalOpen(false)}
+        branches={branches}
+        classes={rawClasses}
+        sessions={sessions}
+        currentUser={currentUser}
+        onSuccess={() => {
+          loadData()
+        }}
+      />
     </motion.div>
   )
 }

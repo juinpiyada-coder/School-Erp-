@@ -40,6 +40,12 @@ function routeStudentApi($uriPath, $method, $id, $data) {
         case '/api/student/parent-analytics':
             $controller->handleParentAnalytics($method, $id, $data);
             break;
+        case '/api/student/bulk-upload':
+            $controller->handleBulkUpload($method, $data);
+            break;
+        case '/api/student/bulk-template':
+            $controller->handleBulkTemplate($method);
+            break;
         default:
             return false; // Not handled here
     }

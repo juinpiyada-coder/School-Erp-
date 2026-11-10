@@ -62,7 +62,7 @@
     },
     {
       "name": "Attendance (Standalone Scripts)",
-      "description": "teacher_attendance_api.php ebong student_attendance_api.php \u2014 eguli index.php gateway-r moddhe wired na, nijeder file-path e directly serve hoy (device biometric + tick-mark attendance er jonyo)."
+      "description": "teacher_attendance_api.php ebong student_attendance_api.php — eguli index.php gateway-r moddhe wired na, nijeder file-path e directly serve hoy (device biometric + tick-mark attendance er jonyo)."
     }
   ],
   "paths": {
@@ -296,7 +296,10 @@
             "required": false,
             "schema": {
               "type": "string",
-              "enum": ["ACTIVE", "INACTIVE"]
+              "enum": [
+                "ACTIVE",
+                "INACTIVE"
+              ]
             },
             "description": "Optional status filter (ACTIVE or INACTIVE)"
           }
@@ -2130,7 +2133,7 @@
         "tags": [
           "Attendance (Standalone Scripts)"
         ],
-        "summary": "Teacher attendance \u2014 summary / branch_rule dekha (GET actions)",
+        "summary": "Teacher attendance — summary / branch_rule dekha (GET actions)",
         "description": "action=summary -> ekta din-er shob teacher-er attendance summary dey (query: date [YYYY-MM-DD, default gotokal], branch_id [optional]). Bearer token lagbe.\n\naction=branch_rule -> ekta branch-er full/half-day rule dekhay (query: branch_id [required]). Bearer token lagbe.",
         "security": [
           {
@@ -2190,7 +2193,7 @@
         "tags": [
           "Attendance (Standalone Scripts)"
         ],
-        "summary": "Teacher attendance \u2014 checkin / checkout / run_batch / branch_rule set / mark_student_attendance (POST actions)",
+        "summary": "Teacher attendance — checkin / checkout / run_batch / branch_rule set / mark_student_attendance (POST actions)",
         "description": "action=checkin / checkout -> biometric device theke IN/OUT punch. X-Device-Key header lagbe (Bearer token na). Body: {\"teacher_id\": \"...\"}\n\naction=run_batch -> raat-er batch job manually trigger kora (admin-only role: R_SUPERADMIN / R_SCHOOLADMIN / R_BRANCHADMIN). Body: {\"date\": \"YYYY-MM-DD\"} (optional, default gotokal).\n\naction=branch_rule -> branch-wise full/half-day rule set kora (admin-only). Body: {\"branch_id\", \"full_day_min_hrs\", \"half_day_min_hrs\"}.\n\naction=mark_student_attendance -> ekta single student-er class-wise attendance mark kora (shudhu shei class-e assigned teacher nijer login diye korte parbe). Body: {\"schedule_id\"/\"SCHL_CLS_SCHLDL_ID\", \"student_id\"/\"STU_STU_ID\", \"date\"/\"ATT_DT\" (optional), \"status\"/\"STU_PRES\" (optional, default Present)}.",
         "security": [
           {
@@ -2219,7 +2222,7 @@
             "name": "X-Device-Key",
             "in": "header",
             "required": false,
-            "description": "Biometric device shared secret. .env-e ATTENDANCE_DEVICE_KEY set na thakle default 'CHANGE_ME_DEVICE_KEY' babohar hoy \u2014 deploy korar age eta must set korte hobe.",
+            "description": "Biometric device shared secret. .env-e ATTENDANCE_DEVICE_KEY set na thakle default 'CHANGE_ME_DEVICE_KEY' babohar hoy — deploy korar age eta must set korte hobe.",
             "schema": {
               "type": "string"
             }
@@ -2231,7 +2234,7 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "description": "Fields vary by action \u2014 dekho operation description e.",
+                "description": "Fields vary by action — dekho operation description e.",
                 "properties": {
                   "teacher_id": {
                     "type": "string",
@@ -2325,7 +2328,7 @@
           "Attendance (Standalone Scripts)"
         ],
         "summary": "Class roster (tick-mark attendance list) dekha",
-        "description": "action=class_roster -> ekta class-schedule-er shob student ebong tader aajker attendance status (Present/Absent/Not Marked) dekhay \u2014 higher-class (11-12) manual tick-mark UI-r jonyo. Login-kora teacher shei schedule-e assigned na hole 403 dey. Query: schedule_id (required), date (optional, default aaj).",
+        "description": "action=class_roster -> ekta class-schedule-er shob student ebong tader aajker attendance status (Present/Absent/Not Marked) dekhay — higher-class (11-12) manual tick-mark UI-r jonyo. Login-kora teacher shei schedule-e assigned na hole 403 dey. Query: schedule_id (required), date (optional, default aaj).",
         "security": [
           {
             "bearerAuth": []
@@ -2489,6 +2492,246 @@
           },
           "404": {
             "description": "Unknown action"
+          }
+        }
+      }
+    },
+    "/api/student/routine": {
+      "get": {
+        "tags": [
+          "Students"
+        ],
+        "summary": "Get student's daily routine / timetable",
+        "description": "Returns day-wise schedule, periods, rooms, and assigned teachers for student",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "student_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Daily routine successfully retrieved"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/student/class-completion": {
+      "get": {
+        "tags": [
+          "Students"
+        ],
+        "summary": "Get syllabus & class completion logs for student's subjects",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "subject_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Class completion data retrieved"
+          }
+        }
+      }
+    },
+    "/api/student/subject-attendance": {
+      "get": {
+        "tags": [
+          "Students"
+        ],
+        "summary": "Get subject-wise attendance analytics for student",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Subject attendance details"
+          }
+        }
+      }
+    },
+    "/api/student/fees-report": {
+      "get": {
+        "tags": [
+          "Students"
+        ],
+        "summary": "Get student fee ledger, dues, and paid receipt report",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Fees report details"
+          }
+        }
+      }
+    },
+    "/api/student/parent-analytics": {
+      "get": {
+        "tags": [
+          "Students"
+        ],
+        "summary": "Parent overview analytics for wards",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "ward_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Parent analytics fetched"
+          }
+        }
+      }
+    },
+    "/api/student/bulk-template": {
+      "get": {
+        "tags": [
+          "Students"
+        ],
+        "summary": "Get student bulk upload schema and sample headers",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns list of expected headers and sample student row"
+          }
+        }
+      }
+    },
+    "/api/student/bulk-upload": {
+      "post": {
+        "tags": [
+          "Students"
+        ],
+        "summary": "Bulk enroll students via Excel/CSV parsed JSON with tenancy isolation",
+        "description": "Uploads multiple student records with atomic database transaction and automatic guardian linking",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "branch_id": {
+                    "type": "string",
+                    "description": "Target branch (for School Admin)"
+                  },
+                  "students": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "STU_NM",
+                        "STU_CONTACTNO"
+                      ],
+                      "properties": {
+                        "STU_NM": {
+                          "type": "string"
+                        },
+                        "class_name": {
+                          "type": "string"
+                        },
+                        "section_name": {
+                          "type": "string"
+                        },
+                        "STU_BR_CLASS_ID": {
+                          "type": "string"
+                        },
+                        "STU_GENDER": {
+                          "type": "string",
+                          "enum": [
+                            "M",
+                            "F",
+                            "OTHER"
+                          ]
+                        },
+                        "STU_DOB": {
+                          "type": "string",
+                          "format": "date"
+                        },
+                        "STU_CONTACTNO": {
+                          "type": "string"
+                        },
+                        "STU_EMAILID": {
+                          "type": "string"
+                        },
+                        "STU_AADHAR": {
+                          "type": "string"
+                        },
+                        "guardianName": {
+                          "type": "string"
+                        },
+                        "guardianPhone": {
+                          "type": "string"
+                        },
+                        "branch_id": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Bulk upload completed with success and failure summary"
+          },
+          "400": {
+            "description": "Invalid payload or missing student rows"
+          },
+          "403": {
+            "description": "Unauthorized branch cross-tenant access"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
           }
         }
       }

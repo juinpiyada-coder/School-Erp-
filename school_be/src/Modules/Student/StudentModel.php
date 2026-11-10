@@ -342,4 +342,162 @@ class StudentModel {
         $stmt = $this->db->prepare("DELETE FROM {$this->tableName} WHERE STU_ID = ?");
         return $stmt->execute([$id]);
     }
+
+    /**
+     * Get Database Connection for Transactions
+     */
+    public function getDb() {
+        return $this->db;
+    }
+
+    /**
+     * Resolve class and section names to SCHL_BR_CLASS_SEC_SESS_ID dynamically.
+     * Supports flexible matching (e.g. "Grade 10" <-> "Class 10" <-> "10", "Section A" <-> "A")
+     * and automatically creates the class/session if missing for that branch, ensuring seamless import.
+     */
+    public function resolveClassSession($branchId, $className, $sectionName = null, $createdBy = null) {
+        if (empty($branchId) || empty($className)) {
+            return null;
+        }
+
+        $classNameClean = trim((string)$className);
+        $sectionClean = $sectionName !== null ? trim((string)$sectionName) : '';
+
+        // Extract clean section letter (e.g. "Section A" -> "A")
+        $sectionLetter = preg_replace('/^(section|sec)\s*/i', '', $sectionClean);
+        $sectionLetter = strtoupper(trim($sectionLetter));
+        if (empty($sectionLetter)) {
+            $sectionLetter = 'A';
+        }
+
+        // Generate normalized variants for class name
+        // e.g. "Grade 10" -> "10", "Class 10"
+        $digitsOnly = preg_replace('/[^0-9]/', '', $classNameClean);
+        $rawClassNoPrefix = trim(preg_replace('/^(grade|class|standard|std)\s*/i', '', $classNameClean));
+
+        $classVariants = array_unique(array_filter([
+            $classNameClean,
+            $rawClassNoPrefix,
+            !empty($digitsOnly) ? "Class " . $digitsOnly : null,
+            !empty($digitsOnly) ? "Grade " . $digitsOnly : null,
+            !empty($digitsOnly) ? $digitsOnly : null
+        ]));
+
+        // 1. Direct Search in SCHL_BR_CLASS_SEC_SESSION joined with SCHL_BR_CLASS
+        foreach ($classVariants as $variant) {
+            $sql = "
+                SELECT sess.SCHL_BR_CLASS_SEC_SESS_ID
+                FROM SCHL_BR_CLASS_SEC_SESSION sess
+                JOIN SCHL_BR_CLASS c ON sess.SCHL_BR_CLASS_SEC_SESS_CLASS = c.SCHL_BR_CLS_ID
+                WHERE sess.SCHL_BR_CLASS_SEC_SESS_BR_ID = ?
+                  AND (LOWER(TRIM(c.SCHL_BR_CLASS_NM)) = LOWER(?) OR LOWER(TRIM(c.SCHL_BR_CLS_ID)) = LOWER(?))
+            ";
+            $params = [$branchId, $variant, $variant];
+            if (!empty($sectionLetter)) {
+                $sql .= " AND (UPPER(TRIM(sess.SCHL_BR_CLASS_SEC_SESS_SECT)) = ? OR UPPER(TRIM(sess.SCHL_BR_CLASS_SEC_SESS_SECT)) = ?)";
+                $params[] = $sectionLetter;
+                $params[] = "SECTION " . $sectionLetter;
+            }
+            $sql .= " LIMIT 1";
+
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($params);
+            $res = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($res && !empty($res['SCHL_BR_CLASS_SEC_SESS_ID'])) {
+                return $res['SCHL_BR_CLASS_SEC_SESS_ID'];
+            }
+        }
+
+        // 2. Direct match by SCHL_BR_CLASS_SEC_SESS_ID
+        $stmt2 = $this->db->prepare("SELECT SCHL_BR_CLASS_SEC_SESS_ID FROM SCHL_BR_CLASS_SEC_SESSION WHERE SCHL_BR_CLASS_SEC_SESS_ID = ? AND SCHL_BR_CLASS_SEC_SESS_BR_ID = ? LIMIT 1");
+        $stmt2->execute([$classNameClean, $branchId]);
+        $res2 = $stmt2->fetch(PDO::FETCH_ASSOC);
+        if ($res2 && !empty($res2['SCHL_BR_CLASS_SEC_SESS_ID'])) {
+            return $res2['SCHL_BR_CLASS_SEC_SESS_ID'];
+        }
+
+        // 3. Check if SCHL_BR_CLASS exists for this branch (or system-wide)
+        $matchedClassId = null;
+        $matchedClassName = $classNameClean;
+
+        foreach ($classVariants as $variant) {
+            $cStmt = $this->db->prepare("SELECT SCHL_BR_CLS_ID, SCHL_BR_CLASS_NM FROM SCHL_BR_CLASS WHERE (SCHL_BR_CENT_ID = ? OR SCHL_BR_CENT_ID IS NULL OR SCHL_BR_CENT_ID = '') AND (LOWER(TRIM(SCHL_BR_CLASS_NM)) = LOWER(?) OR LOWER(TRIM(SCHL_BR_CLS_ID)) = LOWER(?)) LIMIT 1");
+            $cStmt->execute([$branchId, $variant, $variant]);
+            $cRow = $cStmt->fetch(PDO::FETCH_ASSOC);
+            if ($cRow && !empty($cRow['SCHL_BR_CLS_ID'])) {
+                $matchedClassId = $cRow['SCHL_BR_CLS_ID'];
+                $matchedClassName = $cRow['SCHL_BR_CLASS_NM'];
+                break;
+            }
+        }
+
+        // If class itself doesn't exist for this branch, create it automatically
+        if (empty($matchedClassId)) {
+            $formattedClassName = !empty($digitsOnly) ? "Class " . $digitsOnly : $classNameClean;
+            $matchedClassId = strtoupper(uniqid('CLS_'));
+            try {
+                $insClass = $this->db->prepare("
+                    INSERT INTO SCHL_BR_CLASS (SCHL_BR_CLS_ID, SCHL_BR_CENT_ID, SCHL_BR_CLASS_NM, SCHL_BR_CLASS_LANG, SCHL_BR_BRD, SCHL_BR_CLS_CREATEDBY, SCHL_BR_CLS_CREATEDAT)
+                    VALUES (?, ?, ?, 'English', 'CBSE', ?, NOW())
+                ");
+                $insClass->execute([$matchedClassId, $branchId, $formattedClassName, $createdBy]);
+                $matchedClassName = $formattedClassName;
+            } catch (Exception $e) {
+                // If insertion failed, try to fallback to an existing class
+                $fallbackStmt = $this->db->prepare("SELECT SCHL_BR_CLS_ID FROM SCHL_BR_CLASS WHERE SCHL_BR_CENT_ID = ? LIMIT 1");
+                $fallbackStmt->execute([$branchId]);
+                $fallbackRow = $fallbackStmt->fetch(PDO::FETCH_ASSOC);
+                if ($fallbackRow) {
+                    $matchedClassId = $fallbackRow['SCHL_BR_CLS_ID'];
+                }
+            }
+        }
+
+        if (empty($matchedClassId)) {
+            return null;
+        }
+
+        // 4. Auto-create session in SCHL_BR_CLASS_SEC_SESSION for this class & section in this branch
+        $newSessionId = strtoupper(uniqid('SESS_'));
+        $currentYear = date('Y');
+        $nextYear = (int)$currentYear + 1;
+        $academicSession = $currentYear . '-' . $nextYear;
+
+        try {
+            $insSess = $this->db->prepare("
+                INSERT INTO SCHL_BR_CLASS_SEC_SESSION (
+                    SCHL_BR_CLASS_SEC_SESS_ID,
+                    SCHL_BR_CLASS_SEC_SESS_CLASS,
+                    SCHL_BR_CLASS_SEC_SESS_SECT,
+                    SCHL_BR_CLASS_SEC_SESS_SESS,
+                    SCHL_BR_CLASS_SEC_SESS_BR_ID,
+                    SCHL_BR_CLASS_SEC_SESS_CREATEDBY,
+                    SCHL_BR_CLASS_SEC_SESS_CREATEDAT
+                ) VALUES (?, ?, ?, ?, ?, ?, NOW())
+            ");
+            $insSess->execute([
+                $newSessionId,
+                $matchedClassId,
+                $sectionLetter,
+                $academicSession,
+                $branchId,
+                $createdBy
+            ]);
+
+            return $newSessionId;
+        } catch (Exception $e) {
+            // Check if one was created concurrently
+            $checkAgain = $this->db->prepare("
+                SELECT SCHL_BR_CLASS_SEC_SESS_ID 
+                FROM SCHL_BR_CLASS_SEC_SESSION 
+                WHERE SCHL_BR_CLASS_SEC_SESS_CLASS = ? 
+                  AND SCHL_BR_CLASS_SEC_SESS_BR_ID = ? 
+                  AND UPPER(TRIM(SCHL_BR_CLASS_SEC_SESS_SECT)) = ?
+                LIMIT 1
+            ");
+            $checkAgain->execute([$matchedClassId, $branchId, $sectionLetter]);
+            $rowAgain = $checkAgain->fetch(PDO::FETCH_ASSOC);
+            return $rowAgain ? $rowAgain['SCHL_BR_CLASS_SEC_SESS_ID'] : null;
+        }
+    }
 }

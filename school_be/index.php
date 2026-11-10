@@ -17,20 +17,35 @@ if (php_sapi_name() === 'cli-server') {
     }
 }
 
-// Support CORS securely
-$allowedOrigins = [
-    'http://localhost:5173', // Vite default local
-    'http://localhost:3000', // React default local
-    'https://myskool.co.in', // Production UI
-    'http://myskool.co.in',
-];
+// Support CORS securely (loaded dynamically from environment, no hardcoded domains)
+$envPath = __DIR__ . '/.env';
+$allowedOrigins = [];
+if (file_exists($envPath)) {
+    $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        $line = trim($line);
+        if ($line === '' || strpos($line, '#') === 0) continue;
+        if (strpos($line, '=') !== false) {
+            list($k, $v) = explode('=', $line, 2);
+            if (trim($k) === 'CORS_ALLOWED_ORIGINS') {
+                $rawOrigins = explode(',', trim($v));
+                foreach ($rawOrigins as $o) {
+                    $trimmed = trim($o, " \t\n\r\0\x0B\"'");
+                    if ($trimmed !== '') {
+                        $allowedOrigins[] = $trimmed;
+                    }
+                }
+            }
+        }
+    }
+}
 
-$origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
-if (in_array($origin, $allowedOrigins)) {
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+if (!empty($origin) && in_array($origin, $allowedOrigins, true)) {
     header("Access-Control-Allow-Origin: " . $origin);
-} else {
-    // Fallback for dev/tools if needed, but safer to restrict in strict prod
-    header("Access-Control-Allow-Origin: *"); 
+} elseif (empty($allowedOrigins)) {
+    // If not configured, allow matching request origin in development or restrict
+    header("Access-Control-Allow-Origin: " . ($origin ?: "*"));
 }
 
 header("Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS");
@@ -47,6 +62,7 @@ spl_autoload_register(function ($class) {
         'Database' => __DIR__ . '/src/Core/Config/Database.php',
         'Response' => __DIR__ . '/src/Core/Utils/Response.php',
         'JwtHandler' => __DIR__ . '/src/Core/Utils/JwtHandler.php',
+        'RateLimiter' => __DIR__ . '/src/Core/Utils/RateLimiter.php',
         'AuthController' => __DIR__ . '/src/Modules/Auth/AuthController.php',
         'BranchController' => __DIR__ . '/src/Modules/Academic/BranchController.php',
         'StaffController' => __DIR__ . '/src/Modules/Staff/StaffController.php',
