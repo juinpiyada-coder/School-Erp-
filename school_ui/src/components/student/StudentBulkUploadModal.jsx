@@ -95,6 +95,8 @@ export default function StudentBulkUploadModal({
 }) {
   const fileInputRef = useRef(null)
   const [selectedBranch, setSelectedBranch] = useState('')
+  const [selectedClassId, setSelectedClassId] = useState('')
+  const [selectedSection, setSelectedSection] = useState('')
   const [file, setFile] = useState(null)
   const [parsedRows, setParsedRows] = useState([])
   const [validationErrors, setValidationErrors] = useState([])
@@ -123,6 +125,32 @@ export default function StudentBulkUploadModal({
     return sessions.filter(s => !s.branchId || String(s.branchId) === String(effectiveBranch))
   }, [sessions, effectiveBranch])
 
+  // Get active class object from selectedClassId
+  const activeClassObj = useMemo(() => {
+    if (!selectedClassId) return null
+    return branchClasses.find(c => String(c.id) === String(selectedClassId))
+  }, [branchClasses, selectedClassId])
+
+  // Get available sections for selected class
+  const availableSections = useMemo(() => {
+    if (!selectedClassId) {
+      // Return distinct sections across this branch's sessions
+      const secSet = new Set()
+      branchSessions.forEach(s => {
+        if (s.section) secSet.add(s.section)
+      })
+      const list = Array.from(secSet)
+      return list.length > 0 ? list : ['A', 'B', 'C', 'D']
+    }
+    const matchingSessions = branchSessions.filter(s => String(s.classId) === String(selectedClassId))
+    const secSet = new Set()
+    matchingSessions.forEach(s => {
+      if (s.section) secSet.add(s.section)
+    })
+    const list = Array.from(secSet)
+    return list.length > 0 ? list : ['A', 'B', 'C', 'D']
+  }, [branchSessions, selectedClassId])
+
   // Reset state on close
   const handleClose = () => {
     setFile(null)
@@ -132,59 +160,58 @@ export default function StudentBulkUploadModal({
     onClose()
   }
 
-  // Download Sample Template (Excel or CSV)
+  // Download Sample Template (Excel or CSV) with selected Class & Section written into the template
   const handleDownloadTemplate = (type = 'xlsx') => {
     try {
-      // Use real branch classes if available for seamless import
-      let sampleData = [...SAMPLE_ROWS]
-      if (branchClasses.length > 0) {
-        const c1 = branchClasses[0]?.name || 'Grade 10'
-        const c2 = branchClasses[1]?.name || c1
-        sampleData = [
-          [
-            'Aarav Sharma',
-            c1,
-            'Section A',
-            '101',
-            'M',
-            '2010-04-12',
-            '334455667788',
-            'aarav.s@example.com',
-            '9876543210',
-            'Flat 402, Lotus Towers',
-            'Mumbai',
-            'Maharashtra',
-            '400001',
-            'India',
-            'Rajesh Sharma',
-            '9876543211',
-            'rajesh.s@example.com',
-            'Father',
-            effectiveBranch
-          ],
-          [
-            'Ananya Patel',
-            c2,
-            'Section B',
-            '102',
-            'F',
-            '2010-09-21',
-            '887766554433',
-            'ananya.p@example.com',
-            '9876501234',
-            '12 Greenfield Society',
-            'Ahmedabad',
-            'Gujarat',
-            '380015',
-            'India',
-            'Bhavna Patel',
-            '9876501235',
-            'bhavna.p@example.com',
-            'Mother',
-            effectiveBranch
-          ]
+      // Determine class & section to write into the sample rows
+      const targetClassName = activeClassObj?.name || (branchClasses[0]?.name) || 'Grade 10'
+      const targetSectionName = selectedSection || (availableSections[0] ? `Section ${availableSections[0]}` : 'Section A')
+      const targetSection2 = availableSections[1] ? `Section ${availableSections[1]}` : (targetSectionName.endsWith('B') ? 'Section A' : 'Section B')
+
+      const sampleData = [
+        [
+          'Aarav Sharma',
+          targetClassName,
+          targetSectionName,
+          '101',
+          'M',
+          '2010-04-12',
+          '334455667788',
+          'aarav.s@example.com',
+          '9876543210',
+          'Flat 402, Lotus Towers',
+          'Mumbai',
+          'Maharashtra',
+          '400001',
+          'India',
+          'Rajesh Sharma',
+          '9876543211',
+          'rajesh.s@example.com',
+          'Father',
+          effectiveBranch
+        ],
+        [
+          'Ananya Patel',
+          targetClassName,
+          targetSection2,
+          '102',
+          'F',
+          '2010-09-21',
+          '887766554433',
+          'ananya.p@example.com',
+          '9876501234',
+          '12 Greenfield Society',
+          'Ahmedabad',
+          'Gujarat',
+          '380015',
+          'India',
+          'Bhavna Patel',
+          '9876501235',
+          'bhavna.p@example.com',
+          'Mother',
+          effectiveBranch
         ]
-      }
+      ]
 
       const wsData = [SAMPLE_CSV_HEADERS, ...sampleData]
       const ws = XLSX.utils.aoa_to_sheet(wsData)
@@ -194,11 +221,11 @@ export default function StudentBulkUploadModal({
       XLSX.utils.book_append_sheet(wb, ws, 'Students_Template')
 
       if (type === 'csv') {
-        XLSX.writeFile(wb, 'student_bulk_import_template.csv', { bookType: 'csv' })
+        XLSX.writeFile(wb, `student_bulk_import_template_${targetClassName.replace(/\s+/g, '_')}.csv`, { bookType: 'csv' })
       } else {
-        XLSX.writeFile(wb, 'student_bulk_import_template.xlsx', { bookType: 'xlsx' })
+        XLSX.writeFile(wb, `student_bulk_import_template_${targetClassName.replace(/\s+/g, '_')}.xlsx`, { bookType: 'xlsx' })
       }
-      toast.info(`Downloaded student ${type.toUpperCase()} template`)
+      toast.info(`Downloaded student ${type.toUpperCase()} template with ${targetClassName} (${targetSectionName})`)
     } catch (err) {
       toast.error('Failed to generate template: ' + err.message)
     }
@@ -265,8 +292,17 @@ export default function StudentBulkUploadModal({
     rows.forEach((row, idx) => {
       const rowNum = idx + 2
       const name = String(row['Student Name*'] || row['Student Name'] || row['name'] || '').trim()
-      const className = String(row['Class Name*'] || row['Class Name'] || row['grade'] || '').trim()
-      const sectionName = String(row['Section Name*'] || row['Section Name'] || row['section'] || '').trim()
+      let className = String(row['Class Name*'] || row['Class Name'] || row['grade'] || '').trim()
+      let sectionName = String(row['Section Name*'] || row['Section Name'] || row['section'] || '').trim()
+
+      // If user selected a class or section in the modal dropdowns, apply as default fallback
+      if (!className && activeClassObj?.name) {
+        className = activeClassObj.name
+      }
+      if (!sectionName && selectedSection) {
+        sectionName = selectedSection
+      }
+
       const gender = String(row['Gender (M/F/Other)*'] || row['Gender'] || row['gender'] || '').trim()
       const dob = String(row['Date of Birth (YYYY-MM-DD)*'] || row['Date of Birth'] || row['dob'] || '').trim()
       const phone = String(row['Student Phone*'] || row['Student Phone'] || row['phone'] || '').trim()
@@ -437,7 +473,7 @@ export default function StudentBulkUploadModal({
           alignItems: 'flex-end',
           gap: '12px'
         }}>
-          <div className="form-group" style={{ margin: 0, flex: '1 1 240px' }}>
+          <div className="form-group" style={{ margin: 0, flex: '1 1 200px' }}>
             <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <FaBuilding /> Target Branch {isBranchAdmin ? '(Locked)' : '(Default for Sheet)'}
             </label>
@@ -452,7 +488,11 @@ export default function StudentBulkUploadModal({
             ) : (
               <select
                 value={selectedBranch}
-                onChange={(e) => setSelectedBranch(e.target.value)}
+                onChange={(e) => {
+                  setSelectedBranch(e.target.value)
+                  setSelectedClassId('')
+                  setSelectedSection('')
+                }}
                 className="form-control"
               >
                 <option value="">-- Choose Target Branch --</option>
@@ -465,12 +505,54 @@ export default function StudentBulkUploadModal({
             )}
           </div>
 
+          {/* Class Selector Dropdown */}
+          <div className="form-group" style={{ margin: 0, flex: '1 1 170px' }}>
+            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              Select Class (Optional)
+            </label>
+            <select
+              value={selectedClassId}
+              onChange={(e) => {
+                setSelectedClassId(e.target.value)
+                setSelectedSection('')
+              }}
+              className="form-control"
+            >
+              <option value="">-- All / Auto Detect --</option>
+              {branchClasses.map((cls) => (
+                <option key={cls.id} value={cls.id}>
+                  {cls.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Section Selector Dropdown */}
+          <div className="form-group" style={{ margin: 0, flex: '1 1 140px' }}>
+            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              Select Section
+            </label>
+            <select
+              value={selectedSection}
+              onChange={(e) => setSelectedSection(e.target.value)}
+              className="form-control"
+            >
+              <option value="">-- All / Auto Detect --</option>
+              {availableSections.map((sec, idx) => (
+                <option key={idx} value={`Section ${sec}`}>
+                  Section {sec}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* Download Templates Buttons */}
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '8px', alignSelf: 'flex-end' }}>
             <button
               type="button"
               className="btn-secondary"
               onClick={() => handleDownloadTemplate('xlsx')}
+              title={`Download Excel template customized for ${activeClassObj?.name || 'branch classes'}`}
               style={{ color: '#107c41', borderColor: 'rgba(16, 124, 65, 0.3)' }}
             >
               <FaFileExcel style={{ marginRight: '6px', color: '#107c41' }} /> Excel Template
@@ -479,6 +561,7 @@ export default function StudentBulkUploadModal({
               type="button"
               className="btn-secondary"
               onClick={() => handleDownloadTemplate('csv')}
+              title={`Download CSV template customized for ${activeClassObj?.name || 'branch classes'}`}
             >
               <FaFileCsv style={{ marginRight: '6px', color: 'var(--clr-secondary)' }} /> CSV Template
             </button>

@@ -1567,10 +1567,23 @@ class StudentController {
             "Target Branch ID"
         ];
 
+        // Fetch available classes & sections dynamically based on user/branch
+        $userBranchId = $this->user['branch_id'] ?? $this->user['user_branch_id'] ?? null;
+        $sampleClass = "Class 10";
+        $sampleSection = "A";
+
+        try {
+            $classModel = new ClassModel();
+            $classes = $classModel->getAll(1, 0, $this->user);
+            if (!empty($classes) && !empty($classes[0]['SCHL_BR_CLASS_NM'])) {
+                $sampleClass = $classes[0]['SCHL_BR_CLASS_NM'];
+            }
+        } catch (Exception $e) {}
+
         $sampleRow = [
             "John Doe",
-            "Grade 10",
-            "Section A",
+            $sampleClass,
+            $sampleSection,
             "1001",
             "M",
             "2010-05-15",
@@ -1586,7 +1599,7 @@ class StudentController {
             "9876543211",
             "robert.doe@example.com",
             "Father",
-            ""
+            $userBranchId ?: ""
         ];
 
         Response::success("Bulk template schema", [
