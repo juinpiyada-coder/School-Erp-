@@ -49,6 +49,7 @@ const Classes = lazyRetry(() => import('./pages/academic/Classes'))
 const ClassMatrix = lazyRetry(() => import('./pages/academic/ClassMatrix'))
 const ClassSessions = lazyRetry(() => import('./pages/academic/ClassSessions'))
 const Subjects = lazyRetry(() => import('./pages/academic/Subjects'))
+const FeeManagement = lazyRetry(() => import('./pages/finance/FeeManagement'))
 const ClassSchedule = lazyRetry(() => import('./pages/academic/ClassSchedule'))
 
 // Staff & Student
@@ -182,6 +183,8 @@ export default function App() {
                 <Route path="/academic/student-attendance" element={<StudentAttendance />} />
 
                 {/* System */}
+                <Route path="/finance/fees" element={<FeeManagement />} />
+                <Route path="/finance" element={<FeeManagement />} />
                 <Route path="/reports" element={<Reports />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/notifications" element={<Notifications />} />

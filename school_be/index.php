@@ -71,6 +71,8 @@ spl_autoload_register(function ($class) {
         'AttendanceController' => __DIR__ . '/src/Modules/Attendance/AttendanceController.php',
         'NotificationController' => __DIR__ . '/src/Modules/Notification/NotificationController.php',
         'NotificationModel' => __DIR__ . '/src/Modules/Notification/NotificationModel.php',
+        'FinanceController' => __DIR__ . '/src/Modules/Finance/FinanceController.php',
+        'FinanceModel' => __DIR__ . '/src/Modules/Finance/FinanceModel.php',
     ];
 
     if (isset($paths[$class]) && file_exists($paths[$class])) {
@@ -84,6 +86,7 @@ spl_autoload_register(function ($class) {
         __DIR__ . '/src/Modules/Staff',
         __DIR__ . '/src/Modules/Student',
         __DIR__ . '/src/Modules/Notification',
+        __DIR__ . '/src/Modules/Finance',
     ];
 
     foreach ($directories as $dir) {
@@ -309,6 +312,44 @@ if (strpos($routePath, '/api/auth/') === 0) {
 
     require_once __DIR__ . '/src/Core/Routes/api_notification.php';
     $handled = routeNotificationApi($routePath, $method, $id, $data);
+
+    if (!$handled) {
+        header("Content-Type: application/json; charset=utf-8");
+        http_response_code(404);
+        echo json_encode([
+            "status" => "error",
+            "message" => "API Route not found: " . $_SERVER['REQUEST_METHOD'] . " " . $_SERVER['REQUEST_URI']
+        ]);
+        exit;
+    }
+} elseif (strpos($routePath, '/api/finance/') === 0) {
+    // Extract ID from path if present (e.g., /api/finance/class-fees/123)
+    $id = null;
+    $pathParts = explode('/', $routePath);
+    $resources = ['class-fees', 'fee-details', 'student-fee-maps', 'payments', 'fines', 'branch-collections'];
+    if (count($pathParts) > 3) {
+        $lastPart = end($pathParts);
+        $prevPart = $pathParts[count($pathParts) - 2];
+        if (in_array($prevPart, $resources)) {
+            $id = $lastPart;
+            array_pop($pathParts);
+            $routePath = implode('/', $pathParts);
+        }
+    }
+
+    if ($id === null && isset($_GET['id'])) {
+        $id = $_GET['id'];
+    }
+
+    $inputJson = file_get_contents('php://input');
+    $data = json_decode($inputJson, true) ?: [];
+
+    if ($method === 'GET') {
+        $data = array_merge($data, $_GET);
+    }
+
+    require_once __DIR__ . '/src/Core/Routes/api_finance.php';
+    $handled = routeFinanceApi($routePath, $method, $id, $data);
 
     if (!$handled) {
         header("Content-Type: application/json; charset=utf-8");

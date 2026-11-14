@@ -39,6 +39,7 @@ const ROLES_CONFIG = {
   SCHOOL_EXECUTIVE: [
     { label: 'Overview', items: [{ to: '/', icon: FaHome, label: 'Dashboard' }] },
     { label: 'Performance & Finance', items: [
+      { to: '/finance/fees', icon: FaMoneyBillWave, label: 'Fee Management' },
       { to: '/reports', icon: FaChartBar, label: 'All Branch Performances' }
     ]},
     { label: 'Attendance Oversight', items: [
@@ -64,6 +65,9 @@ const ROLES_CONFIG = {
       { to: '/school/matrix', icon: FaCalendarAlt, label: 'Schedule Matrix' },
       { to: '/school/sessions', icon: FaCalendarAlt, label: 'Session & Section' },
       { to: '/school/subjects', icon: FaBook, label: 'Subjects' }
+    ]},
+    { label: 'Finance & Fees', items: [
+      { to: '/finance/fees', icon: FaMoneyBillWave, label: 'Fee Management' }
     ]},
     { label: 'Teachers', items: [
       { to: '/teacher/teachers', icon: FaChalkboardTeacher, label: 'Teachers' },
@@ -115,6 +119,9 @@ const ROLES_CONFIG = {
       { to: '/school/sessions', icon: FaCalendarAlt, label: 'Session & Section' },
       { to: '/school/subjects', icon: FaBook, label: 'Subjects' }
     ]},
+    { label: 'Finance & Fees', items: [
+      { to: '/finance/fees', icon: FaMoneyBillWave, label: 'Fee Management' }
+    ]},
     { label: 'Faculty & Mapping', items: [
       { to: '/teacher/teachers', icon: FaChalkboardTeacher, label: 'Teachers' },
       { to: '/teacher/mapping', icon: FaExchangeAlt, label: 'Teacher Subject Mapping' }
@@ -138,6 +145,7 @@ const ROLES_CONFIG = {
   BRANCH_EXECUTIVE: [
     { label: 'Overview', items: [{ to: '/', icon: FaHome, label: 'Dashboard' }] },
     { label: 'Performance & Finance', items: [
+      { to: '/finance/fees', icon: FaMoneyBillWave, label: 'Fee Management' },
       { to: '/reports', icon: FaChartBar, label: 'Branch Performance Reports' }
     ]},
     { label: 'Branch Attendance', items: [
