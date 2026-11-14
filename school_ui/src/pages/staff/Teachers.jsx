@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { toast } from 'react-toastify'
 
 import { motion } from 'framer-motion'
-import { FaSearch, FaEdit, FaTrash, FaPlus, FaSchool, FaCheckCircle, FaTimesCircle, FaCircle, FaEnvelope, FaEye, FaExclamationCircle, FaCamera, FaTimes, FaUserCircle } from 'react-icons/fa'
+import { FaSearch, FaEdit, FaTrash, FaPlus, FaSchool, FaCheckCircle, FaTimesCircle, FaCircle, FaEnvelope, FaEye, FaExclamationCircle, FaCamera, FaTimes, FaUserCircle, FaFileUpload, FaDownload } from 'react-icons/fa'
 import useDebouncedValue from '../../hooks/useDebouncedValue'
 import usePagination from '../../hooks/usePagination'
 import useSortableData from '../../hooks/useSortableData'
@@ -569,6 +569,10 @@ export default function Teachers() {
   const [subjects, setSubjects] = useState([])
   const [classes, setClasses] = useState([])
   const [showModal, setShowModal] = useState(false)
+  const [showBulkModal, setShowBulkModal] = useState(false)
+  const [bulkFile, setBulkFile] = useState(null)
+  const [bulkUploading, setBulkUploading] = useState(false)
+  const [bulkResult, setBulkResult] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [editingTeacher, setEditingTeacher] = useState(null)
@@ -704,6 +708,72 @@ export default function Teachers() {
     }
   }
 
+  const handleDownloadTemplate = async () => {
+    try {
+      const response = await axios.get('/api/staff/bulk-template', { responseType: 'blob' })
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'text/csv' }))
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', 'staff_bulk_upload_template.csv')
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      toast.success('Template downloaded successfully')
+    } catch {
+      toast.error('Failed to download template')
+    }
+  }
+
+  const handleBulkUploadSubmit = async (e) => {
+    e.preventDefault()
+    if (!bulkFile) {
+      toast.error('Please select a CSV file to upload')
+      return
+    }
+
+    setBulkUploading(true)
+    setBulkResult(null)
+
+    const reader = new FileReader()
+    reader.onload = async (evt) => {
+      try {
+        const text = evt.target.result
+        const lines = text.split(/\r\n|\n/).filter(line => line.trim() !== '')
+        if (lines.length < 2) {
+          toast.error('CSV file has no data rows')
+          setBulkUploading(false)
+          return
+        }
+
+        const headers = lines[0].split(',').map(h => h.trim().replace(/^["']|["']$/g, ''))
+        const rows = []
+
+        for (let i = 1; i < lines.length; i++) {
+          const values = lines[i].split(',').map(v => v.trim().replace(/^["']|["']$/g, ''))
+          if (values.length === headers.length) {
+            const obj = {}
+            headers.forEach((h, idx) => {
+              obj[h] = values[idx]
+            })
+            rows.push(obj)
+          }
+        }
+
+        const res = await axios.post('/api/staff/bulk-upload', { teachers: rows })
+        if (res.data?.status === 'success') {
+          setBulkResult(res.data.data)
+          toast.success(`Bulk upload processed: ${res.data.data.successful_count} succeeded, ${res.data.data.failed_count} failed`)
+          loadData()
+        }
+      } catch (err) {
+        toast.error(err.response?.data?.message || 'Bulk upload failed')
+      } finally {
+        setBulkUploading(false)
+      }
+    }
+    reader.readAsText(bulkFile)
+  }
+
   const columns = [
     {
       label: 'Teacher',
@@ -809,6 +879,9 @@ export default function Teachers() {
         </div>
         <div className="flex gap-md">
           <button id="invite-teacher-btn" className="btn-secondary"><FaEnvelope /> Invite</button>
+          <button id="bulk-upload-teacher-btn" className="btn-secondary" onClick={() => { setBulkResult(null); setBulkFile(null); setShowBulkModal(true); }}>
+            <FaFileUpload /> Bulk Upload
+          </button>
           <button id="add-teacher-btn" className="btn-primary" onClick={() => { setEditingTeacher(null); setShowModal(true); }}>
             <FaPlus /> Add Teacher
           </button>
@@ -931,6 +1004,85 @@ export default function Teachers() {
         onConfirm={confirmDelete}
         onCancel={() => setDeleteTarget(null)}
       />
+
+      {/* ── Bulk Upload Modal ── */}
+      {showBulkModal && (
+        <Modal
+          isOpen={showBulkModal}
+          onClose={() => { setShowBulkModal(false); setBulkResult(null); setBulkFile(null); }}
+          title="Bulk Upload Faculty / Teachers"
+          size="lg"
+        >
+          <div className="space-y-4">
+            <div className="p-3 bg-light rounded border text-sm">
+              <div className="font-semibold mb-1 text-primary">Instructions:</div>
+              <ul className="mb-2 ps-3 text-muted" style={{ fontSize: '0.85rem' }}>
+                <li>Download the official CSV template pre-formatted with all required columns.</li>
+                <li>Fill in <strong>Teacher Name</strong>, <strong>Email</strong>, and <strong>Phone</strong> (all mandatory).</li>
+                <li>Phone must have at least 10 digits; Aadhar must be 12 digits; PAN must be valid 10-char format.</li>
+                <li>If Password is omitted, it will default to <code>Teacher@123</code>.</li>
+              </ul>
+              <button
+                type="button"
+                className="btn-secondary btn-sm flex items-center gap-1"
+                onClick={handleDownloadTemplate}
+              >
+                <FaDownload /> Download CSV Template
+              </button>
+            </div>
+
+            <form onSubmit={handleBulkUploadSubmit}>
+              <div className="form-group mb-3">
+                <label className="form-label font-semibold">Select CSV File</label>
+                <input
+                  type="file"
+                  accept=".csv"
+                  className="form-control"
+                  onChange={(e) => setBulkFile(e.target.files[0] || null)}
+                  required
+                />
+              </div>
+
+              {bulkResult && (
+                <div className={`p-3 rounded mb-3 ${bulkResult.failed_count > 0 ? 'bg-warning-subtle border border-warning' : 'bg-success-subtle border border-success'}`}>
+                  <div className="font-bold mb-1">
+                    Upload Results: {bulkResult.successful_count} created, {bulkResult.failed_count} failed
+                  </div>
+                  {bulkResult.errors && bulkResult.errors.length > 0 && (
+                    <div className="mt-2 text-danger small">
+                      <div className="font-semibold">Errors:</div>
+                      <ul className="ps-3 mb-0">
+                        {bulkResult.errors.map((err, i) => (
+                          <li key={i}>
+                            Row {err.row} ({err.name}): {err.errors.join(', ')}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => { setShowBulkModal(false); setBulkResult(null); setBulkFile(null); }}
+                >
+                  Close
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  disabled={bulkUploading || !bulkFile}
+                >
+                  {bulkUploading ? 'Uploading & Processing...' : 'Upload & Import'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </Modal>
+      )}
     </motion.div>
   )
 }

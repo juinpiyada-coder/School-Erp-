@@ -10,6 +10,12 @@ function routeStaffApi($uriPath, $method, $id, $data) {
         case '/api/staff/teachers':
             $controller->handleTeachers($method, $id, $data);
             break;
+        case '/api/staff/bulk-template':
+            $controller->handleBulkTemplate($method);
+            break;
+        case '/api/staff/bulk-upload':
+            $controller->handleBulkUpload($method, $data);
+            break;
         case '/api/staff/subjects':
             $controller->handleSubjects($method, $id, $data);
             break;

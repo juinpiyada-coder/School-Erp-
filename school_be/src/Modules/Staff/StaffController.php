@@ -468,4 +468,254 @@ class StaffController {
             'absent' => 5
         ]);
     }
+
+    /**
+     * GET /api/staff/bulk-template
+     * Generates a downloadable CSV template with validation rules and sample data
+     */
+    public function handleBulkTemplate($method) {
+        if ($method !== 'GET') {
+            Response::error("Method not allowed", 405);
+            return;
+        }
+
+        $headers = [
+            "Teacher Name*",
+            "Email*",
+            "Phone*",
+            "User ID",
+            "Password",
+            "Aadhar Number",
+            "PAN Number",
+            "Target Branch ID*",
+            "Assigned Class ID",
+            "Assigned Subject ID"
+        ];
+
+        $userBranchId = $this->user['branch_id'] ?? $this->user['user_branch_id'] ?? ($this->user['userId'] ?? 'BRCH001');
+
+        $rows = [
+            $headers,
+            [
+                "Anita Sharma",
+                "anita.sharma@example.com",
+                "9876543210",
+                "anita.sharma@example.com",
+                "Teacher@123",
+                "123456789012",
+                "ABCDE1234F",
+                $userBranchId,
+                "",
+                ""
+            ],
+            [
+                "Rahul Verma",
+                "rahul.verma@example.com",
+                "9811223344",
+                "rahul.verma@example.com",
+                "Teacher@123",
+                "987654321098",
+                "FGHIJ5678K",
+                $userBranchId,
+                "",
+                ""
+            ]
+        ];
+
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="staff_bulk_upload_template.csv"');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+
+        $output = fopen('php://output', 'w');
+        // Add UTF-8 BOM for Excel compatibility
+        fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
+        foreach ($rows as $row) {
+            fputcsv($output, $row);
+        }
+        fclose($output);
+        exit;
+    }
+
+    /**
+     * POST /api/staff/bulk-upload
+     * Batch parses, validates, and inserts multiple staff/teacher records
+     */
+    public function handleBulkUpload($method, $data) {
+        if ($method !== 'POST') {
+            Response::error("Method not allowed. Use POST.", 405);
+            return;
+        }
+
+        $userRole = strtoupper($this->user['role_id'] ?? $this->user['user_role'] ?? '');
+        $userBranchId = $this->user['branch_id'] ?? $this->user['user_branch_id'] ?? ($this->user['userId'] ?? null);
+        $isSchoolAdmin = in_array($userRole, ['R_SCHOOLADMIN', 'R_SCHOOLEXECUTIVE', 'R_SUPERADMIN', 'SUPER_ADMIN']);
+        $isBranchAdmin = in_array($userRole, ['R_BRANCHADMIN', 'R_BRANCHEXECUTIVE', 'R_BRANCHOFFICIAL', 'BRANCH_ADMIN']);
+
+        if (!$isSchoolAdmin && !$isBranchAdmin) {
+            Response::error("Permission denied. Only School Admin and Branch Admin can perform staff bulk upload.", 403);
+            return;
+        }
+
+        // Extract rows
+        $staffList = [];
+        if (isset($data['teachers']) && is_array($data['teachers'])) {
+            $staffList = $data['teachers'];
+        } elseif (isset($data['staff']) && is_array($data['staff'])) {
+            $staffList = $data['staff'];
+        } elseif (isset($data['rows']) && is_array($data['rows'])) {
+            $staffList = $data['rows'];
+        } elseif (is_array($data) && isset($data[0])) {
+            $staffList = $data;
+        }
+
+        if (empty($staffList)) {
+            Response::error("No staff records found in upload payload.", 400);
+            return;
+        }
+
+        $successCount = 0;
+        $failedCount = 0;
+        $errors = [];
+        $createdRecords = [];
+
+        $userModel = new User();
+
+        foreach ($staffList as $index => $row) {
+            $rowNum = $index + 2; // considering header as row 1
+
+            // Normalization
+            $name = trim($row['name'] ?? $row['Teacher Name*'] ?? $row['Teacher Name'] ?? $row['TCHR_NM'] ?? '');
+            $email = trim($row['email'] ?? $row['Email*'] ?? $row['Email'] ?? $row['TCHR_EMAIL'] ?? '');
+            $phone = trim($row['phone'] ?? $row['Phone*'] ?? $row['Phone'] ?? $row['TCHR_CONTACT_NO'] ?? '');
+            $userId = trim($row['userId'] ?? $row['User ID'] ?? $row['USER_ID'] ?? '');
+            $password = trim($row['password'] ?? $row['Password'] ?? $row['PASSWORD'] ?? 'Teacher@123');
+            $aadhar = trim($row['aadhar'] ?? $row['Aadhar Number'] ?? $row['BR_TCHR_AADHAR'] ?? '');
+            $pan = strtoupper(trim($row['pan'] ?? $row['PAN Number'] ?? $row['BR_TCHR_PAN'] ?? ''));
+            $branchId = trim($row['branchId'] ?? $row['branch_id'] ?? $row['Target Branch ID*'] ?? $row['Target Branch ID'] ?? $row['BR_TCHR_BR_ID'] ?? '');
+            $classId = trim($row['classId'] ?? $row['assignedClassId'] ?? $row['Assigned Class ID'] ?? $row['BR_TCHR_ASSIGNED_CLASS_ID'] ?? '');
+            $subjectId = trim($row['subjectId'] ?? $row['Assigned Subject ID'] ?? $row['TCHR_SUB_ID'] ?? '');
+
+            // Fallback user ID to email
+            if (empty($userId)) {
+                $userId = strtolower($email);
+            }
+
+            // Branch validation
+            if ($isBranchAdmin) {
+                $branchId = $userBranchId;
+            } elseif (empty($branchId)) {
+                $branchId = $userBranchId;
+            }
+
+            // Validations
+            $rowErrors = [];
+            if (empty($name)) {
+                $rowErrors[] = "Teacher Name is required";
+            }
+            if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $rowErrors[] = "Valid Email is required";
+            }
+            if (empty($branchId)) {
+                $rowErrors[] = "Branch ID is required";
+            }
+            if (!empty($phone)) {
+                $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
+                if (strlen($cleanPhone) < 10) {
+                    $rowErrors[] = "Phone number must have at least 10 digits";
+                }
+            }
+            if (!empty($aadhar)) {
+                $cleanAadhar = preg_replace('/[^0-9]/', '', $aadhar);
+                if (strlen($cleanAadhar) !== 12) {
+                    $rowErrors[] = "Aadhar must be exactly 12 digits";
+                }
+            }
+            if (!empty($pan) && !preg_match('/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/', $pan)) {
+                $rowErrors[] = "Invalid PAN format (e.g. ABCDE1234F)";
+            }
+
+            if (!empty($rowErrors)) {
+                $failedCount++;
+                $errors[] = [
+                    'row' => $rowNum,
+                    'name' => $name ?: 'Unknown',
+                    'errors' => $rowErrors
+                ];
+                continue;
+            }
+
+            try {
+                $teacherId = strtoupper(uniqid('TCHR_'));
+                $teacherData = [
+                    'TCHR_ID' => $teacherId,
+                    'TCHR_NM' => $name,
+                    'BR_TCHR_BR_ID' => $branchId,
+                    'TCHR_EMAIL' => $email,
+                    'TCHR_CONTACT_NO' => $phone,
+                    'BR_TCHR_AADHAR' => $aadhar,
+                    'BR_TCHR_PAN' => $pan,
+                    'BR_TCHR_ASSIGNED_CLASS_ID' => !empty($classId) ? $classId : null,
+                    'TCHR_STATUS' => 'Active'
+                ];
+
+                $insertedId = $this->teacherModel->create($teacherData);
+
+                // Create Login in SM_USER_LOGIN
+                if (!empty($userId)) {
+                    try {
+                        $existingUser = $userModel->getById($userId);
+                        $userData = [
+                            'user_id' => $userId,
+                            'user_email_id' => $email,
+                            'user_first_name' => $name,
+                            'user_role' => 'R_TEACHER',
+                            'user_branch_id' => $branchId,
+                            'user_passwd' => $password
+                        ];
+                        if (!$existingUser) {
+                            $userModel->create($userData);
+                        }
+                    } catch (Exception $uEx) {
+                        error_log("Bulk upload user creation skipped: " . $uEx->getMessage());
+                    }
+                }
+
+                // Create Subject Mapping if subject ID provided
+                if (!empty($subjectId)) {
+                    try {
+                        $this->teacherSubjectModel->create([
+                            'TCHR_SUB_MAP_ID' => strtoupper(uniqid('MAP_')),
+                            'TCHR_ID' => $insertedId,
+                            'TCHR_SUB_ID' => $subjectId
+                        ]);
+                    } catch (Exception $mEx) {
+                        error_log("Bulk upload subject map skipped: " . $mEx->getMessage());
+                    }
+                }
+
+                $successCount++;
+                $createdRecords[] = [
+                    'id' => $insertedId,
+                    'name' => $name,
+                    'email' => $email
+                ];
+            } catch (Exception $e) {
+                $failedCount++;
+                $errors[] = [
+                    'row' => $rowNum,
+                    'name' => $name,
+                    'errors' => [$e->getMessage()]
+                ];
+            }
+        }
+
+        Response::success("Bulk upload processed", [
+            'total_rows' => count($staffList),
+            'successful_count' => $successCount,
+            'failed_count' => $failedCount,
+            'errors' => $errors,
+            'created' => $createdRecords
+        ], 200);
+    }
 }
