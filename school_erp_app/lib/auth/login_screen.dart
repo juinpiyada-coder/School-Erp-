@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'auth_service.dart';
-import '../common/dashboard_screen.dart';
+import 'user_model.dart';
+import '../dashboards/role_dashboard_router.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -60,11 +61,11 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       );
 
-      // Navigate to Dashboard
+      // Navigate to Role-specific Dashboard
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => const DashboardScreen(),
+          builder: (context) => RoleDashboardRouter(user: user as UserModel),
         ),
       );
     } else {
