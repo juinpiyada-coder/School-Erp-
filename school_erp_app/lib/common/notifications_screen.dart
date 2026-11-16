@@ -29,7 +29,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final res = await CommonService.getNotifications();
     if (!mounted) return;
 
-    if (res['status'] == 'success') {
+    if ((res['status'] == 'success' || res['success'] == true)) {
       setState(() {
         _notifications = res['data'] ?? [];
         _loading = false;

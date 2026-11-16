@@ -29,7 +29,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
     final res = await StudentService.getStudents();
     if (!mounted) return;
 
-    if (res['status'] == 'success') {
+    if ((res['status'] == 'success' || res['success'] == true)) {
       setState(() {
         _students = res['data'] ?? [];
         _loading = false;

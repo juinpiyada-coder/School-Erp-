@@ -1,5 +1,9 @@
 <?php
 
+require_once __DIR__ . '/FinanceModel.php';
+require_once __DIR__ . '/../../Core/Utils/Response.php';
+require_once __DIR__ . '/../../Core/Utils/JwtHandler.php';
+
 class FinanceController
 {
     private $model;
@@ -58,18 +62,20 @@ class FinanceController
      */
     public function handleOverview($method, $data = [])
     {
-        $user = $this->authenticate();
+        try {
+            $user = $this->authenticate();
 
-        if ($method !== 'GET') {
-            Response::error("Method not allowed", 405);
-            return;
+            if ($method !== 'GET') {
+                Response::error("Method not allowed", 405);
+                return;
+            }
+
+            $branchId = $this->resolveBranchScope($user, $data['branch_id'] ?? null);
+            $metrics = $this->model->getFinanceOverview($user, $branchId);
+            Response::success($metrics, "Finance overview loaded successfully");
+        } catch (Throwable $e) {
+            Response::error("Finance overview error: " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine(), 500);
         }
-
-        $branchId = $this->resolveBranchScope($user, $data['branch_id'] ?? null);
-        $academicYear = $data['academic_year'] ?? null;
-
-        $metrics = $this->model->getOverviewMetrics($branchId, $academicYear);
-        Response::success($metrics, "Finance overview loaded successfully");
     }
 
     /**
@@ -419,11 +425,8 @@ class FinanceController
 
         switch ($method) {
             case 'GET':
-                $filters = [
-                    'student_id' => ($role === 'R_STUDENT') ? ($user['user_id'] ?? null) : ($data['student_id'] ?? null),
-                    'status' => $data['status'] ?? null
-                ];
-                $fines = $this->model->getStudentFines($branchId, $filters);
+                $studentId = ($role === 'R_STUDENT') ? ($user['user_id'] ?? null) : ($data['student_id'] ?? null);
+                $fines = $this->model->getFines($user, $branchId, $studentId);
                 Response::success($fines, "Fines fetched successfully");
                 break;
 
@@ -492,11 +495,7 @@ class FinanceController
         $branchId = $this->resolveBranchScope($user, $data['branch_id'] ?? null);
 
         if ($method === 'GET') {
-            $filters = [
-                'collection_year' => $data['collection_year'] ?? null,
-                'collection_month' => $data['collection_month'] ?? null
-            ];
-            $collections = $this->model->getBranchCollections($branchId, $filters);
+            $collections = $this->model->getBranchFeeCollections($user, $branchId);
             Response::success($collections, "Branch collection reports fetched");
         } else {
             Response::error("Method not allowed", 405);

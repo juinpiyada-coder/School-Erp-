@@ -29,7 +29,7 @@ class _TeachersScreenState extends State<TeachersScreen> {
     final res = await StaffService.getTeachers();
     if (!mounted) return;
 
-    if (res['status'] == 'success') {
+    if ((res['status'] == 'success' || res['success'] == true)) {
       setState(() {
         _teachers = res['data'] ?? [];
         _loading = false;

@@ -29,7 +29,7 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
     final res = await AcademicService.getSubjects();
     if (!mounted) return;
 
-    if (res['status'] == 'success') {
+    if ((res['status'] == 'success' || res['success'] == true)) {
       setState(() {
         _subjects = res['data'] ?? [];
         _loading = false;

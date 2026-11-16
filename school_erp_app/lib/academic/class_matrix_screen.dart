@@ -29,7 +29,7 @@ class _ClassMatrixScreenState extends State<ClassMatrixScreen> {
     final res = await AcademicService.getMatrix();
     if (!mounted) return;
 
-    if (res['status'] == 'success') {
+    if ((res['status'] == 'success' || res['success'] == true)) {
       setState(() {
         _matrices = res['data'] ?? [];
         _loading = false;

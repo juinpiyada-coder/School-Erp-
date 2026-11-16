@@ -29,7 +29,7 @@ class _ClassesScreenState extends State<ClassesScreen> {
     final res = await AcademicService.getClasses();
     if (!mounted) return;
 
-    if (res['status'] == 'success') {
+    if ((res['status'] == 'success' || res['success'] == true)) {
       setState(() {
         _classes = res['data'] ?? [];
         _loading = false;

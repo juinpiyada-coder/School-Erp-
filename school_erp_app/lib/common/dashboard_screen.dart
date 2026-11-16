@@ -39,7 +39,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (!mounted) return;
     setState(() {
       _user = user;
-      if (res['status'] == 'success') {
+      if ((res['status'] == 'success' || res['success'] == true)) {
         _metrics = res['data'] ?? {};
       }
       _loading = false;

@@ -29,7 +29,7 @@ class _ParentsScreenState extends State<ParentsScreen> {
     final res = await StudentService.getParents();
     if (!mounted) return;
 
-    if (res['status'] == 'success') {
+    if ((res['status'] == 'success' || res['success'] == true)) {
       setState(() {
         _parents = res['data'] ?? [];
         _loading = false;

@@ -14,10 +14,11 @@ class CommonService {
   }
 
   // Dashboard Stats & Metrics
-  static Future<Map<String, dynamic>> getDashboardMetrics() async {
+  static Future<Map<String, dynamic>> getDashboardMetrics({String? branchId}) async {
     try {
+      final query = branchId != null && branchId.isNotEmpty ? '?branch_id=$branchId' : '';
       final res = await http.get(
-        Uri.parse('${AppConstants.baseUrl}/dashboard/metrics'),
+        Uri.parse('${AppConstants.baseUrl}/dashboard/overview$query'),
         headers: await _getHeaders(),
       );
       return jsonDecode(res.body);

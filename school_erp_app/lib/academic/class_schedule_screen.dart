@@ -29,7 +29,7 @@ class _ClassScheduleScreenState extends State<ClassScheduleScreen> {
     final res = await AcademicService.getSchedule();
     if (!mounted) return;
 
-    if (res['status'] == 'success') {
+    if ((res['status'] == 'success' || res['success'] == true)) {
       setState(() {
         _schedules = res['data'] ?? [];
         _loading = false;

@@ -29,7 +29,7 @@ class _SchoolDetailsScreenState extends State<SchoolDetailsScreen> {
     final res = await AcademicService.getSchoolDetails();
     if (!mounted) return;
 
-    if (res['status'] == 'success') {
+    if ((res['status'] == 'success' || res['success'] == true)) {
       final list = res['data'];
       setState(() {
         _details = (list is List && list.isNotEmpty) ? list[0] : (res['data'] is Map ? res['data'] : {});

@@ -29,7 +29,7 @@ class _BranchesScreenState extends State<BranchesScreen> {
     final res = await AcademicService.getBranches();
     if (!mounted) return;
 
-    if (res['status'] == 'success') {
+    if ((res['status'] == 'success' || res['success'] == true)) {
       setState(() {
         _branches = res['data'] ?? [];
         _loading = false;

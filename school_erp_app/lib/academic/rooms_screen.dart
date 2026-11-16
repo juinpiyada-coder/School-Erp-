@@ -29,7 +29,7 @@ class _RoomsScreenState extends State<RoomsScreen> {
     final res = await AcademicService.getRooms();
     if (!mounted) return;
 
-    if (res['status'] == 'success') {
+    if ((res['status'] == 'success' || res['success'] == true)) {
       setState(() {
         _rooms = res['data'] ?? [];
         _loading = false;

@@ -29,7 +29,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     final res = await CommonService.getReports();
     if (!mounted) return;
 
-    if (res['status'] == 'success') {
+    if ((res['status'] == 'success' || res['success'] == true)) {
       setState(() {
         _reports = res['data'] ?? {};
         _loading = false;

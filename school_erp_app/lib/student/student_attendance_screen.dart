@@ -31,7 +31,7 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
     final res = await StudentService.getAttendance(date: dateStr);
     if (!mounted) return;
 
-    if (res['status'] == 'success') {
+    if ((res['status'] == 'success' || res['success'] == true)) {
       setState(() {
         _attendance = res['data'] ?? [];
         _loading = false;

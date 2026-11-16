@@ -45,11 +45,11 @@ class _FeeManagementScreenState extends State<FeeManagementScreen> with SingleTi
     if (!mounted) return;
 
     setState(() {
-      if (resOverview['status'] == 'success') _overview = resOverview['data'] ?? {};
-      if (resStructures['status'] == 'success') _structures = resStructures['data'] ?? [];
-      if (resInvoices['status'] == 'success') _invoices = resInvoices['data'] ?? [];
-      if (resPayments['status'] == 'success') _payments = resPayments['data'] ?? [];
-      if (resFines['status'] == 'success') _fines = resFines['data'] ?? [];
+      if (resOverview['status'] == 'success' || resOverview['success'] == true) _overview = resOverview['data'] ?? {};
+      if (resStructures['status'] == 'success' || resStructures['success'] == true) _structures = resStructures['data'] ?? [];
+      if (resInvoices['status'] == 'success' || resInvoices['success'] == true) _invoices = resInvoices['data'] ?? [];
+      if (resPayments['status'] == 'success' || resPayments['success'] == true) _payments = resPayments['data'] ?? [];
+      if (resFines['status'] == 'success' || resFines['success'] == true) _fines = resFines['data'] ?? [];
       _loading = false;
     });
   }

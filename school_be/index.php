@@ -343,7 +343,7 @@ if (strpos($routePath, '/api/auth/') === 0) {
         ]);
         exit;
     }
-} elseif (strpos($routePath, '/api/finance/') === 0) {
+} elseif (strpos($routePath, '/api/finance') === 0) {
     // Extract ID from path if present (e.g., /api/finance/class-fees/123)
     $id = null;
     $pathParts = explode('/', $routePath);
