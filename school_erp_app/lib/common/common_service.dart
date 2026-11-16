@@ -53,6 +53,81 @@ class CommonService {
     }
   }
 
+  // Get White Label Settings matching Settings.jsx
+  static Future<Map<String, dynamic>> getWhiteLabelSettings({String? bmnId, String? brnId}) async {
+    try {
+      final queryParams = <String, String>{};
+      if (bmnId != null && bmnId.isNotEmpty) queryParams['bmn_id'] = bmnId;
+      if (brnId != null && brnId.isNotEmpty) queryParams['brn_id'] = brnId;
+      final uri = Uri.parse('${AppConstants.baseUrl}/settings/whitelabel').replace(queryParameters: queryParams.isEmpty ? null : queryParams);
+      final res = await http.get(uri, headers: await _getHeaders());
+      return jsonDecode(res.body);
+    } catch (e) {
+      return {'status': 'error', 'message': e.toString()};
+    }
+  }
+
+  // Save White Label Settings
+  static Future<Map<String, dynamic>> saveWhiteLabelSettings({
+    String? bmnId,
+    String? brnId,
+    required String appName,
+    required String primaryColor,
+    required String secondaryColor,
+    String? logoBase64,
+    String? bannerBase64,
+  }) async {
+    try {
+      final body = {
+        'bmn_id': bmnId,
+        'brn_id': brnId,
+        'settings': {
+          'appName': appName,
+          'primaryColor': primaryColor,
+          'secondaryColor': secondaryColor,
+        },
+        'logo_base64': logoBase64,
+        'banner_base64': bannerBase64,
+      };
+
+      final res = await http.post(
+        Uri.parse('${AppConstants.baseUrl}/settings/whitelabel'),
+        headers: await _getHeaders(),
+        body: jsonEncode(body),
+      );
+      return jsonDecode(res.body);
+    } catch (e) {
+      return {'status': 'error', 'message': e.toString()};
+    }
+  }
+
+  // User Profile
+  static Future<Map<String, dynamic>> getProfile() async {
+    try {
+      final res = await http.get(
+        Uri.parse('${AppConstants.baseUrl}/auth/me'),
+        headers: await _getHeaders(),
+      );
+      return jsonDecode(res.body);
+    } catch (e) {
+      return {'status': 'error', 'message': e.toString()};
+    }
+  }
+
+  // Update Profile
+  static Future<Map<String, dynamic>> updateProfile(Map<String, dynamic> data) async {
+    try {
+      final res = await http.put(
+        Uri.parse('${AppConstants.baseUrl}/auth/profile'),
+        headers: await _getHeaders(),
+        body: jsonEncode(data),
+      );
+      return jsonDecode(res.body);
+    } catch (e) {
+      return {'status': 'error', 'message': e.toString()};
+    }
+  }
+
   // Settings & Whitelabel Configuration
   static Future<Map<String, dynamic>> getSettings() async {
     try {
