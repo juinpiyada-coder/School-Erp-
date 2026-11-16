@@ -1,6 +1,9 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
+    # Set RewriteBase to ensure LiteSpeed rewrites correctly to the subfolder
+    RewriteBase /SMS/school_be/
+
     # Pass Authorization header to PHP in Apache/CGI environments
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
