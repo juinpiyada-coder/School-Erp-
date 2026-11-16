@@ -40,16 +40,37 @@ if (file_exists($envPath)) {
     }
 }
 
-$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-if (!empty($origin) && in_array($origin, $allowedOrigins, true)) {
+$origin = $_SERVER['HTTP_ORIGIN'] ?? ($_SERVER['HTTP_REFERER'] ?? '');
+// Clean up referer if origin was empty (strip path to get scheme://host:port)
+if (empty($_SERVER['HTTP_ORIGIN']) && !empty($origin)) {
+    $parsed = parse_url($origin);
+    if (!empty($parsed['scheme']) && !empty($parsed['host'])) {
+        $origin = $parsed['scheme'] . '://' . $parsed['host'] . (!empty($parsed['port']) ? ':' . $parsed['port'] : '');
+    }
+}
+
+$isLocalhost = false;
+if (!empty($origin)) {
+    $parsedHost = parse_url($origin, PHP_URL_HOST);
+    if ($parsedHost === 'localhost' || $parsedHost === '127.0.0.1' || $parsedHost === '10.0.2.2') {
+        $isLocalhost = true;
+    }
+}
+
+if (!empty($origin) && (in_array($origin, $allowedOrigins, true) || $isLocalhost)) {
     header("Access-Control-Allow-Origin: " . $origin);
+    header("Access-Control-Allow-Credentials: true");
 } elseif (empty($allowedOrigins)) {
     // If not configured, allow matching request origin in development or restrict
     header("Access-Control-Allow-Origin: " . ($origin ?: "*"));
+} else {
+    // Fallback: if origin is empty or testing from direct clients
+    header("Access-Control-Allow-Origin: *");
 }
 
 header("Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma");
+header("Access-Control-Max-Age: 86400");
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
