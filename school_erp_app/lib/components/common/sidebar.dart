@@ -6,6 +6,7 @@ import '../../auth/auth_service.dart';
 import '../../auth/constants.dart';
 import '../../auth/login_screen.dart';
 import '../../auth/user_model.dart';
+import '../../auth/role_links_screen.dart';
 
 // Academic screens
 import '../../academic/branches_screen.dart';
@@ -135,6 +136,9 @@ class _AppDrawerState extends State<AppDrawer> {
     final norm = url.trim().toLowerCase();
     if (norm == '/' || norm == '/dashboard') {
       return (ctx) => _user != null ? RoleDashboardRouter(user: _user!) : const AdminDashboardScreen();
+    }
+    if (norm.contains('role-link') || norm.contains('role_link') || (norm.contains('role') && norm.contains('link'))) {
+      return (ctx) => const RoleLinksScreen();
     }
     if (norm.contains('branch')) return (ctx) => const BranchesScreen();
     if (norm.contains('matrix')) return (ctx) => const ClassMatrixScreen();
