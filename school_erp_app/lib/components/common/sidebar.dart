@@ -7,6 +7,8 @@ import '../../auth/constants.dart';
 import '../../auth/login_screen.dart';
 import '../../auth/user_model.dart';
 import '../../auth/role_links_screen.dart';
+import '../../auth/roles_screen.dart';
+import '../../auth/user_logins_screen.dart';
 
 // Academic screens
 import '../../academic/branches_screen.dart';
@@ -140,6 +142,12 @@ class _AppDrawerState extends State<AppDrawer> {
     if (norm.contains('role-link') || norm.contains('role_link') || (norm.contains('role') && norm.contains('link'))) {
       return (ctx) => const RoleLinksScreen();
     }
+    if (norm.contains('user/roles') || (norm.contains('role') && !norm.contains('link'))) {
+      return (ctx) => const RolesScreen();
+    }
+    if (norm.contains('user/logins') || norm.contains('login') || (norm.contains('user') && !norm.contains('role'))) {
+      return (ctx) => const UserLoginsScreen();
+    }
     if (norm.contains('branch')) return (ctx) => const BranchesScreen();
     if (norm.contains('matrix')) return (ctx) => const ClassMatrixScreen();
     if (norm.contains('session')) return (ctx) => const ClassSessionsScreen();
@@ -258,6 +266,11 @@ class _AppDrawerState extends State<AppDrawer> {
           DynamicNavItem(title: 'Students Directory', url: '/student/students', icon: Icons.people_outline, builder: (_) => const StudentsScreen()),
           DynamicNavItem(title: 'Parents & Guardians', url: '/parent/parents', icon: Icons.family_restroom_outlined, builder: (_) => const ParentsScreen()),
         ]),
+        DynamicNavSection(label: 'Security & Access Control', items: [
+          DynamicNavItem(title: 'Roles Management', url: '/user/roles', icon: Icons.admin_panel_settings_outlined, builder: (_) => const RolesScreen()),
+          DynamicNavItem(title: 'User Logins & Credentials', url: '/user/logins', icon: Icons.badge_outlined, builder: (_) => const UserLoginsScreen()),
+          DynamicNavItem(title: 'Role Navigation Links', url: '/auth/role-links', icon: Icons.link_outlined, builder: (_) => const RoleLinksScreen()),
+        ]),
         DynamicNavSection(label: 'System & Reports', items: [
           DynamicNavItem(title: 'Notifications & Alerts', url: '/notifications', icon: Icons.notifications_none_outlined, builder: (_) => const NotificationsScreen()),
           DynamicNavItem(title: 'Institutional Reports', url: '/reports', icon: Icons.bar_chart_outlined, builder: (_) => const ReportsScreen()),
@@ -281,6 +294,10 @@ class _AppDrawerState extends State<AppDrawer> {
         DynamicNavSection(label: 'People', items: [
           DynamicNavItem(title: 'Teachers', url: '/teacher/teachers', icon: Icons.school_outlined, builder: (_) => const TeachersScreen()),
           DynamicNavItem(title: 'Students', url: '/student/students', icon: Icons.people_outline, builder: (_) => const StudentsScreen()),
+        ]),
+        DynamicNavSection(label: 'Access Control', items: [
+          DynamicNavItem(title: 'Roles & Privileges', url: '/user/roles', icon: Icons.admin_panel_settings_outlined, builder: (_) => const RolesScreen()),
+          DynamicNavItem(title: 'User Accounts', url: '/user/logins', icon: Icons.badge_outlined, builder: (_) => const UserLoginsScreen()),
         ]),
       ];
     } else if (role.contains('BRANCH')) {
