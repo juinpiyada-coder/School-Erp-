@@ -5,6 +5,7 @@ import '../student/student_attendance_screen.dart';
 import '../finance/fee_management_screen.dart';
 import '../common/notifications_screen.dart';
 import '../components/common/sidebar.dart';
+import '../components/common/header.dart';
 
 class GuardianDashboardScreen extends StatelessWidget {
   const GuardianDashboardScreen({super.key});
@@ -14,7 +15,10 @@ class GuardianDashboardScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppTheme.background,
       drawer: const AppDrawer(),
-      appBar: AppTheme.buildAppBar(title: 'Parent & Guardian Portal'),
+      appBar: const AppHeader(
+        title: 'Parent & Guardian Portal',
+        breadcrumbs: ['Home', 'Guardian Portal'],
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(

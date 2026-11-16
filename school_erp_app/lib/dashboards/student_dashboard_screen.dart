@@ -5,6 +5,7 @@ import '../academic/subjects_screen.dart';
 import '../student/student_attendance_screen.dart';
 import '../finance/fee_management_screen.dart';
 import '../components/common/sidebar.dart';
+import '../components/common/header.dart';
 
 class StudentDashboardScreen extends StatelessWidget {
   const StudentDashboardScreen({super.key});
@@ -14,7 +15,10 @@ class StudentDashboardScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppTheme.background,
       drawer: const AppDrawer(),
-      appBar: AppTheme.buildAppBar(title: 'Student Learning Space'),
+      appBar: const AppHeader(
+        title: 'Student Learning Space',
+        breadcrumbs: ['Home', 'Student Portal'],
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(

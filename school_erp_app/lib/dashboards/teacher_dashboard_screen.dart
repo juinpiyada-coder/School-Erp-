@@ -4,6 +4,7 @@ import '../academic/class_schedule_screen.dart';
 import '../academic/subjects_screen.dart';
 import '../student/student_attendance_screen.dart';
 import '../components/common/sidebar.dart';
+import '../components/common/header.dart';
 
 class TeacherDashboardScreen extends StatelessWidget {
   const TeacherDashboardScreen({super.key});
@@ -13,7 +14,10 @@ class TeacherDashboardScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppTheme.background,
       drawer: const AppDrawer(),
-      appBar: AppTheme.buildAppBar(title: 'Teacher Faculty Dashboard'),
+      appBar: const AppHeader(
+        title: 'Teacher Faculty Dashboard',
+        breadcrumbs: ['Home', 'Faculty Portal'],
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(

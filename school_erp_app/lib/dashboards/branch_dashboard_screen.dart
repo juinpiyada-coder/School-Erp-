@@ -5,6 +5,7 @@ import '../staff/attendance_screen.dart';
 import '../student/students_screen.dart';
 import '../finance/fee_management_screen.dart';
 import '../components/common/sidebar.dart';
+import '../components/common/header.dart';
 
 class BranchDashboardScreen extends StatelessWidget {
   const BranchDashboardScreen({super.key});
@@ -14,7 +15,10 @@ class BranchDashboardScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppTheme.background,
       drawer: const AppDrawer(),
-      appBar: AppTheme.buildAppBar(title: 'Branch Executive Dashboard'),
+      appBar: const AppHeader(
+        title: 'Branch Executive Dashboard',
+        breadcrumbs: ['Home', 'Branch Admin'],
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(

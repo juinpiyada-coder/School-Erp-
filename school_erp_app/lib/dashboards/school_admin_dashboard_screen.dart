@@ -5,6 +5,7 @@ import '../academic/class_schedule_screen.dart';
 import '../staff/teachers_screen.dart';
 import '../finance/fee_management_screen.dart';
 import '../components/common/sidebar.dart';
+import '../components/common/header.dart';
 
 class SchoolAdminDashboardScreen extends StatelessWidget {
   const SchoolAdminDashboardScreen({super.key});
@@ -14,7 +15,10 @@ class SchoolAdminDashboardScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppTheme.background,
       drawer: const AppDrawer(),
-      appBar: AppTheme.buildAppBar(title: 'School Admin Dashboard'),
+      appBar: const AppHeader(
+        title: 'School Admin Dashboard',
+        breadcrumbs: ['Home', 'School Admin'],
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(

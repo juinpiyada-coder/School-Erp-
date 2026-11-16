@@ -19,6 +19,7 @@ import '../auth/role_links_screen.dart';
 import '../common/common_service.dart';
 import '../academic/academic_service.dart';
 import '../components/common/sidebar.dart';
+import '../components/common/header.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -85,17 +86,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     return Scaffold(
       backgroundColor: AppTheme.background,
       drawer: const AppDrawer(),
-      appBar: AppTheme.buildAppBar(
+      appBar: AppHeader(
         title: 'Super Admin Dashboard',
-        actions: [
+        breadcrumbs: const ['Home', 'Super Admin'],
+        extraActions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh, size: 20),
             tooltip: 'Refresh Metrics',
             onPressed: _loadDashboardData,
-          ),
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsScreen())),
           ),
         ],
       ),
