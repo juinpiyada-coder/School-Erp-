@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'auth_service.dart';
+import '../academic/academic_menu_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -117,7 +118,23 @@ class _LoginScreenState extends State<LoginScreen> {
                         style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                       ),
                     ],
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 24),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const AcademicMenuScreen()),
+                        );
+                      },
+                      icon: const Icon(Icons.school_outlined),
+                      label: const Text('Go to Academic Portal'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF005A9E),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
                     ElevatedButton.icon(
                       onPressed: () async {
                         await AuthService.logout();
