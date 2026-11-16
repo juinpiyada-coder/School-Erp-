@@ -29,7 +29,7 @@ void main() {
         roleCode: 'R_SUPERADMIN',
       );
       await tester.pumpWidget(MaterialApp(home: RoleDashboardRouter(user: user)));
-      await tester.pumpAndSettle();
+      await tester.pump();
 
       expect(find.byType(AdminDashboardScreen), findsOneWidget);
       expect(find.text('Super Admin Dashboard'), findsOneWidget);

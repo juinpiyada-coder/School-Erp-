@@ -23,6 +23,8 @@ import '../../academic/subjects_screen.dart';
 // Staff & Faculty screens
 import '../../staff/attendance_screen.dart';
 import '../../staff/teachers_screen.dart';
+import '../../staff/subject_mapping_screen.dart';
+import '../../staff/daily_routine_screen.dart';
 
 // Student screens
 import '../../student/parents_screen.dart';
@@ -148,6 +150,10 @@ class _AppDrawerState extends State<AppDrawer> {
     if (norm.contains('user/logins') || norm.contains('login') || (norm.contains('user') && !norm.contains('role'))) {
       return (ctx) => const UserLoginsScreen();
     }
+    if (norm.contains('mapping') || (norm.contains('teacher') && norm.contains('map')) || (norm.contains('sub') && norm.contains('map'))) {
+      return (ctx) => const SubjectMappingScreen();
+    }
+    if (norm.contains('routine')) return (ctx) => const DailyRoutineScreen();
     if (norm.contains('branch')) return (ctx) => const BranchesScreen();
     if (norm.contains('matrix')) return (ctx) => const ClassMatrixScreen();
     if (norm.contains('session')) return (ctx) => const ClassSessionsScreen();
@@ -252,8 +258,10 @@ class _AppDrawerState extends State<AppDrawer> {
           DynamicNavItem(title: 'Super Admin Dashboard', url: '/', icon: Icons.admin_panel_settings_outlined, builder: (_) => const AdminDashboardScreen()),
           DynamicNavItem(title: 'Role Dashboards Switcher', url: '/dashboards', icon: Icons.view_quilt_outlined, builder: (_) => const DashboardsMenuScreen()),
         ]),
-        DynamicNavSection(label: 'Academics & Campuses', items: [
+        DynamicNavSection(label: 'Institution & Academics', items: [
+          DynamicNavItem(title: 'School Profile', url: '/school/details', icon: Icons.account_balance_outlined, builder: (_) => const SchoolDetailsScreen()),
           DynamicNavItem(title: 'Branches Management', url: '/school/branches', icon: Icons.business_outlined, builder: (_) => const BranchesScreen()),
+          DynamicNavItem(title: 'Schedule Matrix', url: '/school/matrix', icon: Icons.table_chart_outlined, builder: (_) => const ClassMatrixScreen()),
           DynamicNavItem(title: 'Class Divisions', url: '/school/classes', icon: Icons.meeting_room_outlined, builder: (_) => const ClassesScreen()),
           DynamicNavItem(title: 'Classroom Facilities', url: '/school/rooms', icon: Icons.door_front_door_outlined, builder: (_) => const RoomsScreen()),
           DynamicNavItem(title: 'Curriculum Subjects', url: '/school/subjects', icon: Icons.book_outlined, builder: (_) => const SubjectsScreen()),
@@ -263,7 +271,9 @@ class _AppDrawerState extends State<AppDrawer> {
         ]),
         DynamicNavSection(label: 'Staff & Students', items: [
           DynamicNavItem(title: 'Faculty Directory', url: '/teacher/teachers', icon: Icons.school_outlined, builder: (_) => const TeachersScreen()),
+          DynamicNavItem(title: 'Teacher Subject Mapping', url: '/teacher/mapping', icon: Icons.swap_horiz_outlined, builder: (_) => const SubjectMappingScreen()),
           DynamicNavItem(title: 'Students Directory', url: '/student/students', icon: Icons.people_outline, builder: (_) => const StudentsScreen()),
+          DynamicNavItem(title: 'Student Attendance', url: '/academic/student-attendance', icon: Icons.checklist_outlined, builder: (_) => const StudentAttendanceScreen()),
           DynamicNavItem(title: 'Parents & Guardians', url: '/parent/parents', icon: Icons.family_restroom_outlined, builder: (_) => const ParentsScreen()),
         ]),
         DynamicNavSection(label: 'Security & Access Control', items: [
