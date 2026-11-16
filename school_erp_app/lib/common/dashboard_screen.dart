@@ -3,6 +3,11 @@ import '../academic/academic_theme.dart';
 import '../auth/auth_service.dart';
 import '../auth/user_model.dart';
 import '../academic/academic_menu_screen.dart';
+import '../staff/staff_menu_screen.dart';
+import '../student/student_menu_screen.dart';
+import '../finance/fee_management_screen.dart';
+import '../dashboards/role_dashboard_router.dart';
+import '../components/common/sidebar.dart';
 import 'notifications_screen.dart';
 import 'reports_screen.dart';
 import 'settings_screen.dart';
@@ -45,6 +50,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.background,
+      drawer: const AppDrawer(),
       appBar: AppTheme.buildAppBar(
         title: 'Institutional Dashboard',
         actions: [
@@ -185,6 +191,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
+                    if (_user != null) ...[
+                      _buildModuleNavTile(
+                        title: 'My Role Workspace',
+                        subtitle: 'Role-dedicated console for ${_user!.roleCode}',
+                        icon: Icons.person_pin_outlined,
+                        color: AppTheme.primary,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => RoleDashboardRouter(user: _user!)),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 10),
+                    ],
                     _buildModuleNavTile(
                       title: 'Academic Administration',
                       subtitle: 'Branches, classes, matrix, rooms, and schedule',
@@ -194,6 +215,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(builder: (context) => const AcademicMenuScreen()),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    _buildModuleNavTile(
+                      title: 'Staff & Teachers',
+                      subtitle: 'Faculty directory, subject allocations, and staff attendance',
+                      icon: Icons.badge_outlined,
+                      color: AppTheme.accent,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const StaffMenuScreen()),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    _buildModuleNavTile(
+                      title: 'Student & Parent Portal',
+                      subtitle: 'Student profiles, parent contacts, and daily attendance',
+                      icon: Icons.people_outline,
+                      color: AppTheme.warning,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const StudentMenuScreen()),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    _buildModuleNavTile(
+                      title: 'Finance & Fee Operations',
+                      subtitle: 'Class fee structures, batch invoices, receipts, and penalties',
+                      icon: Icons.payments_outlined,
+                      color: AppTheme.success,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const FeeManagementScreen()),
                         );
                       },
                     ),
