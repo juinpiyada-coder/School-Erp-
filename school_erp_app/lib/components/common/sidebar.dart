@@ -6,6 +6,7 @@ import '../../academic/academic_menu_screen.dart';
 import '../../staff/staff_menu_screen.dart';
 import '../../student/student_menu_screen.dart';
 import '../../finance/fee_management_screen.dart';
+import '../../dashboards/role_dashboard_router.dart';
 import '../../common/notifications_screen.dart';
 import '../../common/reports_screen.dart';
 import '../../common/settings_screen.dart';
@@ -59,6 +60,10 @@ class AppDrawer extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 8),
               children: [
                 _buildNavItem(context, Icons.dashboard_outlined, 'Dashboard', () => Navigator.pop(context)),
+                _buildNavItem(context, Icons.view_quilt_outlined, 'Role Dashboards', () {
+                  Navigator.pop(context);
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const DashboardsMenuScreen()));
+                }),
                 _buildNavItem(context, Icons.account_balance_outlined, 'Academics', () {
                   Navigator.pop(context);
                   Navigator.push(context, MaterialPageRoute(builder: (_) => const AcademicMenuScreen()));
