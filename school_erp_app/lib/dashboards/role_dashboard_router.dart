@@ -113,9 +113,16 @@ class DashboardsMenuScreen extends StatelessWidget {
           final item = dashboards[index];
           final color = item['color'] as Color;
 
-          return Container(
-            decoration: AppTheme.cardDecoration,
+          return Material(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            elevation: 1,
+            shadowColor: Colors.black12,
             child: ListTile(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: const BorderSide(color: Color(0xFFE2E8F0)),
+              ),
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               leading: Container(
                 padding: const EdgeInsets.all(12),

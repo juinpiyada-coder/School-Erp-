@@ -24,9 +24,11 @@ class AuthService {
       );
 
       final dynamic responseData = jsonDecode(response.body);
+      final isSuccess = response.statusCode == 200 &&
+          (responseData['status'] == 'success' || responseData['success'] == true);
 
-      if (response.statusCode == 200 && responseData['status'] == 'success') {
-        final data = responseData['data'];
+      if (isSuccess) {
+        final data = responseData['data'] ?? responseData;
         final accessToken = data['access_token'] ?? '';
         final userData = data['user'] ?? {};
 

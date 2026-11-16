@@ -110,9 +110,16 @@ class GuardianDashboardScreen extends StatelessWidget {
   }
 
   Widget _buildNav(BuildContext context, String title, String sub, IconData icon, VoidCallback onTap) {
-    return Container(
-      decoration: AppTheme.cardDecoration,
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      elevation: 1,
+      shadowColor: Colors.black12,
       child: ListTile(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFFE2E8F0)),
+        ),
         leading: Icon(icon, color: AppTheme.primary),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
         subtitle: Text(sub, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
