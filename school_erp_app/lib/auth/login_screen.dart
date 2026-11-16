@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'auth_service.dart';
-import '../academic/academic_menu_screen.dart';
+import '../common/dashboard_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -60,103 +60,11 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       );
 
-      // Navigate to Dashboard / Home Placeholder
+      // Navigate to Dashboard
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => Scaffold(
-            appBar: AppBar(
-              title: const Text('School Dashboard'),
-              backgroundColor: const Color(0xFF005A9E),
-              foregroundColor: Colors.white,
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.logout),
-                  onPressed: () async {
-                    await AuthService.logout();
-                    if (!context.mounted) return;
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (context) => const LoginScreen()),
-                    );
-                  },
-                )
-              ],
-            ),
-            body: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF005A9E).withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.school,
-                        size: 72,
-                        color: Color(0xFF005A9E),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Text(
-                      'Welcome, ${user.name}!',
-                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Role: ${user.roleCode}',
-                      style: TextStyle(fontSize: 16, color: Colors.grey[700]),
-                    ),
-                    if (user.branchName != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        'Branch: ${user.branchName}',
-                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                      ),
-                    ],
-                    const SizedBox(height: 24),
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const AcademicMenuScreen()),
-                        );
-                      },
-                      icon: const Icon(Icons.school_outlined),
-                      label: const Text('Go to Academic Portal'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF005A9E),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    ElevatedButton.icon(
-                      onPressed: () async {
-                        await AuthService.logout();
-                        if (!context.mounted) return;
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (context) => const LoginScreen()),
-                        );
-                      },
-                      icon: const Icon(Icons.logout),
-                      label: const Text('Sign Out'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red[600],
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      ),
-                    )
-                  ],
-                ),
-              ),
-            ),
-          ),
+          builder: (context) => const DashboardScreen(),
         ),
       );
     } else {
