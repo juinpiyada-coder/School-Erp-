@@ -5,6 +5,7 @@ import '../auth/user_model.dart';
 import '../auth/login_screen.dart';
 import 'common_service.dart';
 import 'ota_update_service.dart';
+import 'shorebird_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -459,6 +460,23 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                         context: context,
                         apkUrl: 'https://myskool.co.in/SMS/school_be/updates/app-release.apk',
                       );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  height: 44,
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.bolt, size: 18),
+                    label: const Text('Check Shorebird CodePush Patch', style: TextStyle(fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF0F172A),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    onPressed: () {
+                      ShorebirdUpdateService.checkAndApplyUpdate(context: context);
                     },
                   ),
                 ),

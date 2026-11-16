@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'auth/login_screen.dart';
+import 'common/shorebird_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -11,6 +12,9 @@ Future<void> main() async {
   } catch (e) {
     debugPrint("Warning: Could not load .env.production, falling back to default URL: $e");
   }
+
+  // Silent background check for Shorebird CodePush OTA patches
+  ShorebirdUpdateService.checkForUpdateInBackground();
 
   runApp(const MySkoolApp());
 }
