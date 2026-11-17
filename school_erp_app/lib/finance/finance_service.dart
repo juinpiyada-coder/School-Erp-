@@ -82,5 +82,61 @@ class FinanceService {
       return {'status': 'error', 'message': e.toString()};
     }
   }
+
+  // Create Fee Structure
+  static Future<Map<String, dynamic>> createClassFee(Map<String, dynamic> data) async {
+    try {
+      final res = await http.post(
+        Uri.parse('${AppConstants.baseUrl}/finance/class-fees'),
+        headers: await _getHeaders(),
+        body: jsonEncode(data),
+      );
+      return jsonDecode(res.body);
+    } catch (e) {
+      return {'status': 'error', 'message': e.toString()};
+    }
+  }
+
+  // Record Payment
+  static Future<Map<String, dynamic>> recordPayment(Map<String, dynamic> data) async {
+    try {
+      final res = await http.post(
+        Uri.parse('${AppConstants.baseUrl}/finance/payments'),
+        headers: await _getHeaders(),
+        body: jsonEncode(data),
+      );
+      return jsonDecode(res.body);
+    } catch (e) {
+      return {'status': 'error', 'message': e.toString()};
+    }
+  }
+
+  // Create Fine
+  static Future<Map<String, dynamic>> createFine(Map<String, dynamic> data) async {
+    try {
+      final res = await http.post(
+        Uri.parse('${AppConstants.baseUrl}/finance/fines'),
+        headers: await _getHeaders(),
+        body: jsonEncode(data),
+      );
+      return jsonDecode(res.body);
+    } catch (e) {
+      return {'status': 'error', 'message': e.toString()};
+    }
+  }
+
+  // Batch Assign Fee Structure
+  static Future<Map<String, dynamic>> batchAssign(Map<String, dynamic> data) async {
+    try {
+      final res = await http.post(
+        Uri.parse('${AppConstants.baseUrl}/finance/batch-assign'),
+        headers: await _getHeaders(),
+        body: jsonEncode(data),
+      );
+      return jsonDecode(res.body);
+    } catch (e) {
+      return {'status': 'error', 'message': e.toString()};
+    }
+  }
 }
 

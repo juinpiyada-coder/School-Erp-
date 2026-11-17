@@ -65,5 +65,32 @@ class StaffService {
       return {'status': 'error', 'message': e.toString()};
     }
   }
+
+  // Bulk Upload Faculty
+  static Future<Map<String, dynamic>> bulkUploadTeachers(List<Map<String, dynamic>> teachers) async {
+    try {
+      final res = await http.post(
+        Uri.parse('${AppConstants.baseUrl}/staff/bulk-upload'),
+        headers: await _getHeaders(),
+        body: jsonEncode({'teachers': teachers}),
+      );
+      return jsonDecode(res.body);
+    } catch (e) {
+      return {'status': 'error', 'message': e.toString()};
+    }
+  }
+
+  // Get Faculty Bulk Upload Template
+  static Future<Map<String, dynamic>> getBulkTemplate() async {
+    try {
+      final res = await http.get(
+        Uri.parse('${AppConstants.baseUrl}/staff/bulk-template'),
+        headers: await _getHeaders(),
+      );
+      return jsonDecode(res.body);
+    } catch (e) {
+      return {'status': 'error', 'message': e.toString()};
+    }
+  }
 }
 

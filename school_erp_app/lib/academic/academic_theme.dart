@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 class AppTheme {
   // Brand colors
   static const Color primary = Color(0xFF005A9E);
+  static const Color primaryDark = Color(0xFF003D6B);
   static const Color primaryLight = Color(0xFFEBF5FF);
   static const Color accent = Color(0xFF0284C7);
   static const Color success = Color(0xFF10B981);

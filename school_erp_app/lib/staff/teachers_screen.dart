@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../academic/academic_theme.dart';
+import '../academic/academic_service.dart';
 import 'staff_service.dart';
 
 class TeachersScreen extends StatefulWidget {
@@ -12,12 +13,24 @@ class TeachersScreen extends StatefulWidget {
 class _TeachersScreenState extends State<TeachersScreen> {
   bool _loading = true;
   List<dynamic> _teachers = [];
+  List<dynamic> _branches = [];
   String? _error;
 
   @override
   void initState() {
     super.initState();
+    _loadBranches();
     _fetchTeachers();
+  }
+
+  Future<void> _loadBranches() async {
+    final res = await AcademicService.getBranches();
+    if (!mounted) return;
+    if (res['status'] == 'success' || res['success'] == true) {
+      setState(() {
+        _branches = res['data'] ?? [];
+      });
+    }
   }
 
   Future<void> _fetchTeachers() async {
@@ -42,6 +55,167 @@ class _TeachersScreenState extends State<TeachersScreen> {
     }
   }
 
+  void _showBulkUploadDialog() {
+    final csvController = TextEditingController();
+    String? defaultBranchId = _branches.isNotEmpty ? _branches.first['BR_ID']?.toString() : null;
+    bool isSubmitting = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Row(
+            children: const [
+              Icon(Icons.upload_file, color: AppTheme.primary),
+              SizedBox(width: 8),
+              Text('Faculty Bulk Upload', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: SizedBox(
+              width: MediaQuery.of(context).size.width * 0.9,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Paste CSV or Comma-Separated rows for faculty batch onboarding.\nFormat:\nName, Email, Phone, User ID, Password',
+                    style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                  ),
+                  const SizedBox(height: 12),
+                  if (_branches.isNotEmpty) ...[
+                    DropdownButtonFormField<String>(
+                      decoration: const InputDecoration(
+                        labelText: 'Default Campus / Branch *',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      initialValue: defaultBranchId,
+                      items: _branches.map<DropdownMenuItem<String>>((b) {
+                        final id = (b['BR_ID'] ?? b['branch_id'] ?? '').toString();
+                        final name = (b['BR_NM'] ?? b['branch_name'] ?? 'Branch $id').toString();
+                        return DropdownMenuItem(value: id, child: Text(name, style: const TextStyle(fontSize: 13)));
+                      }).toList(),
+                      onChanged: (val) => setDialogState(() => defaultBranchId = val),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  TextField(
+                    controller: csvController,
+                    maxLines: 8,
+                    decoration: InputDecoration(
+                      hintText: 'John Doe, john@example.com, 9876543210, tchr_john, Pass@123\nJane Smith, jane@example.com, 9123456780, tchr_jane, Pass@123',
+                      hintStyle: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      fillColor: Colors.grey.shade50,
+                      filled: true,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(color: AppTheme.primaryLight, borderRadius: BorderRadius.circular(6)),
+                    child: Row(
+                      children: const [
+                        Icon(Icons.info_outline, size: 16, color: AppTheme.primary),
+                        SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'Each line represents one faculty record. At least Name, Email, and Phone are required.',
+                            style: TextStyle(fontSize: 11, color: AppTheme.primary),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isSubmitting ? null : () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary, foregroundColor: Colors.white),
+              onPressed: isSubmitting
+                  ? null
+                  : () async {
+                      final text = csvController.text.trim();
+                      if (text.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter CSV data')));
+                        return;
+                      }
+
+                      final lines = text.split('\n');
+                      final List<Map<String, dynamic>> records = [];
+
+                      for (final rawLine in lines) {
+                        final line = rawLine.trim();
+                        if (line.isEmpty) continue;
+                        final parts = line.split(',').map((p) => p.trim()).toList();
+                        if (parts.length >= 2) {
+                          final name = parts[0];
+                          final email = parts[1];
+                          final phone = parts.length > 2 ? parts[2] : '';
+                          final userId = parts.length > 3 && parts[3].isNotEmpty ? parts[3] : email.toLowerCase();
+                          final password = parts.length > 4 && parts[4].isNotEmpty ? parts[4] : 'Teacher@123';
+
+                          records.add({
+                            'name': name,
+                            'email': email,
+                            'phone': phone,
+                            'userId': userId,
+                            'password': password,
+                            ...?defaultBranchId != null ? {'branch_id': defaultBranchId} : null,
+                          });
+                        }
+                      }
+
+                      if (records.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No valid records parsed from input')));
+                        return;
+                      }
+
+                      setDialogState(() => isSubmitting = true);
+
+                      final res = await StaffService.bulkUploadTeachers(records);
+
+                      if (ctx.mounted) {
+                        Navigator.pop(ctx);
+                      }
+
+                      if (mounted) {
+                        if (res['status'] == 'success' || res['success'] == true) {
+                          final data = res['data'] ?? {};
+                          final successCount = data['successCount'] ?? records.length;
+                          final failedCount = data['failedCount'] ?? 0;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Bulk upload complete: $successCount succeeded, $failedCount failed'),
+                              backgroundColor: failedCount > 0 ? AppTheme.warning : AppTheme.success,
+                            ),
+                          );
+                          _fetchTeachers();
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(res['message'] ?? 'Bulk upload failed'), backgroundColor: AppTheme.danger),
+                          );
+                        }
+                      }
+                    },
+              child: isSubmitting
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Text('Upload Faculty'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -50,10 +224,23 @@ class _TeachersScreenState extends State<TeachersScreen> {
         title: 'Faculty & Teachers',
         actions: [
           IconButton(
+            tooltip: 'Bulk Upload',
+            icon: const Icon(Icons.upload_file),
+            onPressed: _showBulkUploadDialog,
+          ),
+          IconButton(
+            tooltip: 'Refresh',
             icon: const Icon(Icons.refresh),
             onPressed: _fetchTeachers,
           )
         ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: AppTheme.primary,
+        foregroundColor: Colors.white,
+        onPressed: _showBulkUploadDialog,
+        icon: const Icon(Icons.group_add),
+        label: const Text('Bulk Upload'),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
@@ -78,7 +265,21 @@ class _TeachersScreenState extends State<TeachersScreen> {
                   ),
                 )
               : _teachers.isEmpty
-                  ? const Center(child: Text('No teachers found.', style: TextStyle(color: AppTheme.textSecondary)))
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text('No teachers found.', style: TextStyle(color: AppTheme.textSecondary)),
+                          const SizedBox(height: 12),
+                          ElevatedButton.icon(
+                            onPressed: _showBulkUploadDialog,
+                            icon: const Icon(Icons.upload_file),
+                            label: const Text('Bulk Upload Faculty'),
+                            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary, foregroundColor: Colors.white),
+                          ),
+                        ],
+                      ),
+                    )
                   : RefreshIndicator(
                       onRefresh: _fetchTeachers,
                       child: ListView.separated(
@@ -144,4 +345,3 @@ class _TeachersScreenState extends State<TeachersScreen> {
     );
   }
 }
-

@@ -53,6 +53,60 @@ class CommonService {
     }
   }
 
+  // Reports Overview (Branch & Date aware)
+  static Future<Map<String, dynamic>> getReportsOverview({String? branchId}) async {
+    try {
+      final query = branchId != null && branchId.isNotEmpty ? '?branch_id=$branchId' : '';
+      final res = await http.get(
+        Uri.parse('${AppConstants.baseUrl}/reports/overview$query'),
+        headers: await _getHeaders(),
+      );
+      return jsonDecode(res.body);
+    } catch (e) {
+      return {'status': 'error', 'message': e.toString()};
+    }
+  }
+
+  // Students by Branch
+  static Future<Map<String, dynamic>> getStudentsByBranch() async {
+    try {
+      final res = await http.get(
+        Uri.parse('${AppConstants.baseUrl}/reports/students-by-branch'),
+        headers: await _getHeaders(),
+      );
+      return jsonDecode(res.body);
+    } catch (e) {
+      return {'status': 'error', 'message': e.toString()};
+    }
+  }
+
+  // Teachers by Branch
+  static Future<Map<String, dynamic>> getTeachersByBranch() async {
+    try {
+      final res = await http.get(
+        Uri.parse('${AppConstants.baseUrl}/reports/teachers-by-branch'),
+        headers: await _getHeaders(),
+      );
+      return jsonDecode(res.body);
+    } catch (e) {
+      return {'status': 'error', 'message': e.toString()};
+    }
+  }
+
+  // Attendance Teacher Summary
+  static Future<Map<String, dynamic>> getAttendanceTeacherSummary({String? date, String? branchId}) async {
+    try {
+      final params = <String, String>{};
+      if (date != null && date.isNotEmpty) params['date'] = date;
+      if (branchId != null && branchId.isNotEmpty) params['branch_id'] = branchId;
+      final uri = Uri.parse('${AppConstants.baseUrl}/attendance/teacher/summary').replace(queryParameters: params.isEmpty ? null : params);
+      final res = await http.get(uri, headers: await _getHeaders());
+      return jsonDecode(res.body);
+    } catch (e) {
+      return {'status': 'error', 'message': e.toString()};
+    }
+  }
+
   // Get White Label Settings matching Settings.jsx
   static Future<Map<String, dynamic>> getWhiteLabelSettings({String? bmnId, String? brnId}) async {
     try {
