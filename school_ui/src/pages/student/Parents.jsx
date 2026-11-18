@@ -137,6 +137,14 @@ export default function Parents() {
     if (!/^[6-9]\d{9}$/.test(formData.phone.replace(/[^0-9]/g, '').slice(0, 10))) errs.phone = 'Enter a valid 10-digit Indian number (starts with 6-9)'
     if (!formData.occupation.trim()) errs.occupation = 'Occupation is required.'
     if (formData.email && formData.email.trim() && !/^\S+@\S+\.\S+$/.test(formData.email)) errs.email = 'Please enter a valid email address'
+    const userIdTrimmed = formData.userId ? formData.userId.trim() : ''
+    if (userIdTrimmed) {
+      if (!/^[a-zA-Z0-9._@-]+$/.test(userIdTrimmed)) {
+        errs.userId = 'User ID can only contain letters, numbers, dots, underscores, @ and hyphens.'
+      } else if (userIdTrimmed.length < 3) {
+        errs.userId = 'User ID must be at least 3 characters long.'
+      }
+    }
     if (formData.userId && formData.userId.trim() && !editingId && !formData.password) {
       errs.password = 'Password is required when providing a Login ID.'
     }
@@ -151,7 +159,7 @@ export default function Parents() {
     setErrors({})
     try {
       const payload = {
-        PRNT_NM: formData.name,
+        PRNT_NM: formData.name.trim(),
         PRNT_AADHAR: formData.aadhar.trim(),
         relation: formData.relation,
         PRNT_CONTACT_NO: formData.phone,
@@ -378,7 +386,7 @@ export default function Parents() {
           </>
         }
       >
-        <form id="guardian-form" onSubmit={handleSubmit}>
+        <form id="guardian-form" onSubmit={handleSubmit} noValidate>
           <div className="modal-body">
             {/* Photo Upload Section */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '12px', background: 'rgba(0, 90, 158, 0.04)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(0, 90, 158, 0.1)', marginBottom: '16px' }}>
@@ -458,7 +466,7 @@ export default function Parents() {
                 className={`form-control${errors.name ? ' form-input-error' : ''}`}
                 placeholder="e.g. Rajesh Sharma"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value.replace(/[^a-zA-Z\s]/g, '') })}
+                onChange={(e) => { setFormData({ ...formData, name: e.target.value.replace(/[^a-zA-Z\s]/g, '') }); if (errors.name) setErrors((prev) => ({ ...prev, name: '' })) }}
                 required
               />
               {errors.name && <span className="form-error-msg"><FaExclamationCircle /> {errors.name}</span>}
@@ -474,7 +482,7 @@ export default function Parents() {
                 className={`form-control${errors.aadhar ? ' form-input-error' : ''}`}
                 placeholder="e.g. 123456789012"
                 value={formData.aadhar}
-                onChange={(e) => setFormData({ ...formData, aadhar: e.target.value.replace(/[^0-9]/g, '').slice(0, 12) })}
+                onChange={(e) => { setFormData({ ...formData, aadhar: e.target.value.replace(/[^0-9]/g, '').slice(0, 12) }); if (errors.aadhar) setErrors((prev) => ({ ...prev, aadhar: '' })) }}
               />
               {errors.aadhar && <span className="form-error-msg"><FaExclamationCircle /> {errors.aadhar}</span>}
             </div>
@@ -485,7 +493,7 @@ export default function Parents() {
                 ref={(el) => (fieldRefs.current.relation = el)}
                 className={`form-control${errors.relation ? ' form-input-error' : ''}`}
                 value={formData.relation}
-                onChange={(e) => setFormData({ ...formData, relation: e.target.value })}
+                onChange={(e) => { setFormData({ ...formData, relation: e.target.value }); if (errors.relation) setErrors((prev) => ({ ...prev, relation: '' })) }}
                 required
               >
                 <option value="" disabled>Select Relationship</option>
@@ -513,7 +521,7 @@ export default function Parents() {
                 pattern="[6-9][0-9]{9}"
                 title="Please enter a valid 10-digit Indian phone number starting with 6-9"
                 value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/[^0-9]/g, '').slice(0, 10) })}
+                onChange={(e) => { setFormData({ ...formData, phone: e.target.value.replace(/[^0-9]/g, '').slice(0, 10) }); if (errors.phone) setErrors((prev) => ({ ...prev, phone: '' })) }}
                 onKeyPress={(e) => { if (!/[0-9]/.test(e.key)) e.preventDefault(); }}
                 required
               />
@@ -527,7 +535,7 @@ export default function Parents() {
                 className={`form-control${errors.occupation ? ' form-input-error' : ''}`}
                 placeholder="e.g. Software Engineer"
                 value={formData.occupation}
-                onChange={(e) => setFormData({ ...formData, occupation: e.target.value.replace(/[^a-zA-Z0-9\s&.\-]/g, '') })}
+                onChange={(e) => { setFormData({ ...formData, occupation: e.target.value.replace(/[^a-zA-Z0-9\s&.\-]/g, '') }); if (errors.occupation) setErrors((prev) => ({ ...prev, occupation: '' })) }}
                 required
               />
               {errors.occupation && <span className="form-error-msg"><FaExclamationCircle /> {errors.occupation}</span>}
@@ -574,7 +582,7 @@ export default function Parents() {
                 className={`form-control${errors.userId ? ' form-input-error' : ''}`}
                 placeholder="e.g. prnt_rajesh"
                 value={formData.userId}
-                onChange={(e) => setFormData({ ...formData, userId: e.target.value.replace(/\s+/g, '') })}
+                onChange={(e) => { setFormData({ ...formData, userId: e.target.value.replace(/\s+/g, '') }); if (errors.userId) setErrors((prev) => ({ ...prev, userId: '' })) }}
               />
               {errors.userId && <span className="form-error-msg"><FaExclamationCircle /> {errors.userId}</span>}
             </div>
@@ -591,7 +599,7 @@ export default function Parents() {
                   className={`form-control${errors.password ? ' form-input-error' : ''}`}
                   placeholder={editingId ? '•••••••• (leave blank to keep current)' : 'Enter login password'}
                   value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  onChange={(e) => { setFormData({ ...formData, password: e.target.value }); if (errors.password) setErrors((prev) => ({ ...prev, password: '' })) }}
                   style={{ paddingRight: '2.5rem' }}
                 />
                 <button

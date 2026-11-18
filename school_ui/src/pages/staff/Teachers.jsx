@@ -87,8 +87,10 @@ function TeacherFormModal({ onClose, onSaved, branches = [], subjects = [], clas
     else if (!/\S+@\S+\.\S+/.test(form.email)) e.email = 'Enter a valid email address.'
     if (form.phone && form.phone.trim() && !/^[6-9]\d{9}$/.test(form.phone.replace(/[^0-9]/g, '').slice(0, 10))) e.phone = 'Enter a valid 10-digit Indian number (starts with 6-9).'
     if (!editingTeacher && !form.userId.trim()) e.userId = 'User ID is required.'
+    else if (form.userId.trim() && !/^[a-zA-Z0-9._@-]+$/.test(form.userId.trim())) e.userId = 'User ID can only contain letters, numbers, dots, underscores, @ and hyphens.'
+    else if (form.userId.trim() && form.userId.trim().length < 3) e.userId = 'User ID must be at least 3 characters long.'
     if (!editingTeacher && !form.password) e.password = 'Password is required.'
-    else if (!editingTeacher && form.password.length < 6) e.password = 'Password must be at least 6 characters long.'
+    else if (form.password && form.password.length < 6) e.password = 'Password must be at least 6 characters long.'
     return e
   }
 

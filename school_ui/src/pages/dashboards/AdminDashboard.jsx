@@ -39,7 +39,8 @@ import {
   FaClipboardList,
   FaExchangeAlt,
   FaUserPlus,
-  FaTable
+  FaTable,
+  FaMoneyBillWave
 } from 'react-icons/fa'
 import { ATTENDANCE_COLORS } from '../../lib/chartColors'
 import { getGreeting } from '../../lib/timeGreeting'
@@ -193,6 +194,9 @@ export default function AdminDashboard() {
           </button>
           <button type="button" className="btn btn-secondary btn-sm" onClick={() => navigate('/parent/parents')} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
             <FaUserFriends size={12} /> + Guardian
+          </button>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => navigate('/finance/fees')} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+            <FaMoneyBillWave size={12} /> Fee Management
           </button>
           <button type="button" className="btn btn-primary btn-sm" onClick={() => navigate('/student/students')} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
             <FaUserPlus size={12} /> + Student Admission

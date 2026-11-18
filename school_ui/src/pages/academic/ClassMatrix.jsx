@@ -1,8 +1,14 @@
 import axios from '../../lib/axios'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { FaSearch, FaPlus, FaEdit, FaTrash, FaTable, FaClock } from 'react-icons/fa'
 import { toast } from 'react-toastify'
+import { scrollToFirstError } from '../../lib/formValidation'
+
+const MATRIX_FIELD_ORDER = [
+  'SCHL_UNIQ_MATRIX_NM', 'SCHL_NO_OF_CLASS', 'SCHL_CLASS_DURATION',
+  'SCHL_CLASS_FRM', 'SCHL_CLASS_TO'
+]
 
 function normaliseMatrix(m) {
   return {
@@ -31,6 +37,7 @@ export default function ClassMatrix() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingMatrix, setEditingMatrix] = useState(null)
   const [errors, setErrors] = useState({})
+  const fieldRefs = useRef({})
 
   const currentUser = JSON.parse(sessionStorage.getItem('e_school_user') || '{}')
   const userRole = (currentUser.user_role || currentUser.role_id || currentUser.role || '').toLowerCase()
@@ -154,8 +161,10 @@ export default function ClassMatrix() {
     // Same Unique Matrix Name may be reused with a different Matrix Type (e.g. "Daily Class" + "Exam / Assessment").
     // Time must flow forward: End Time has to be later than Start Time (e.g. 08:00 -> 14:00, 10:00 -> 17:00).
     if (!formData.SCHL_UNIQ_MATRIX_NM.trim()) errs.SCHL_UNIQ_MATRIX_NM = 'Unique Matrix Name is required.'
-    if (!formData.SCHL_NO_OF_CLASS || Number(formData.SCHL_NO_OF_CLASS) <= 0) errs.SCHL_NO_OF_CLASS = 'Number of classes must be greater than 0.'
-    if (!formData.SCHL_CLASS_DURATION || Number(formData.SCHL_CLASS_DURATION) <= 0) errs.SCHL_CLASS_DURATION = 'Duration must be greater than 0.'
+    if (!formData.SCHL_NO_OF_CLASS) errs.SCHL_NO_OF_CLASS = 'Number of classes is required.'
+    else if (Number(formData.SCHL_NO_OF_CLASS) < 1 || Number(formData.SCHL_NO_OF_CLASS) > 15) errs.SCHL_NO_OF_CLASS = 'Number of classes must be between 1 and 15.'
+    if (!formData.SCHL_CLASS_DURATION) errs.SCHL_CLASS_DURATION = 'Duration is required.'
+    else if (Number(formData.SCHL_CLASS_DURATION) < 10 || Number(formData.SCHL_CLASS_DURATION) > 180) errs.SCHL_CLASS_DURATION = 'Duration must be between 10 and 180 minutes.'
     if (!formData.SCHL_CLASS_FRM) errs.SCHL_CLASS_FRM = 'Start time is required.'
     if (!formData.SCHL_CLASS_TO) errs.SCHL_CLASS_TO = 'End time is required.'
     if (formData.SCHL_CLASS_FRM && formData.SCHL_CLASS_TO && formData.SCHL_CLASS_TO <= formData.SCHL_CLASS_FRM) {
@@ -164,6 +173,7 @@ export default function ClassMatrix() {
     
     if (Object.keys(errs).length > 0) {
       setErrors(errs)
+      scrollToFirstError(errs, fieldRefs.current, MATRIX_FIELD_ORDER)
       return
     }
 
@@ -332,7 +342,7 @@ export default function ClassMatrix() {
               <h2 className="modal-title">{editingMatrix ? 'Edit Schedule Matrix' : 'Add New Schedule Matrix'}</h2>
               <button className="btn-icon" onClick={() => setIsModalOpen(false)}>×</button>
             </div>
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit} noValidate>
               <div className="modal-body">
                 {/* School & Branch Selector Grid */}
                 <div className="form-row-2col">
@@ -389,10 +399,14 @@ export default function ClassMatrix() {
                   <label className="form-label">Unique Matrix Name <span className="form-required">*</span></label>
                   <input
                     type="text"
+                    ref={(el) => (fieldRefs.current.SCHL_UNIQ_MATRIX_NM = el)}
                     className={`form-control${errors.SCHL_UNIQ_MATRIX_NM ? ' form-input-error' : ''}`}
                     placeholder="e.g. Primary Routine 6-Period, HighSchool-Lab-Matrix"
                     value={formData.SCHL_UNIQ_MATRIX_NM}
-                    onChange={(e) => setFormData({ ...formData, SCHL_UNIQ_MATRIX_NM: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, SCHL_UNIQ_MATRIX_NM: e.target.value })
+                      if (errors.SCHL_UNIQ_MATRIX_NM) setErrors((prev) => ({ ...prev, SCHL_UNIQ_MATRIX_NM: '' }))
+                    }}
                     required
                   />
                   {errors.SCHL_UNIQ_MATRIX_NM && <span className="form-error-msg">{errors.SCHL_UNIQ_MATRIX_NM}</span>}
@@ -419,11 +433,17 @@ export default function ClassMatrix() {
                       type="number"
                       min="1"
                       max="15"
-                      className="form-control"
+                      ref={(el) => (fieldRefs.current.SCHL_NO_OF_CLASS = el)}
+                      className={`form-control${errors.SCHL_NO_OF_CLASS ? ' form-input-error' : ''}`}
                       value={formData.SCHL_NO_OF_CLASS}
-                      onChange={(e) => setFormData({ ...formData, SCHL_NO_OF_CLASS: parseInt(e.target.value, 10) || 1 })}
+                      onChange={(e) => {
+                        const raw = e.target.value
+                        setFormData({ ...formData, SCHL_NO_OF_CLASS: raw === '' ? '' : parseInt(raw, 10) })
+                        if (errors.SCHL_NO_OF_CLASS) setErrors((prev) => ({ ...prev, SCHL_NO_OF_CLASS: '' }))
+                      }}
                       required
                     />
+                    {errors.SCHL_NO_OF_CLASS && <span className="form-error-msg">{errors.SCHL_NO_OF_CLASS}</span>}
                   </div>
                 </div>
 
@@ -434,20 +454,30 @@ export default function ClassMatrix() {
                       type="number"
                       min="10"
                       max="180"
-                      className="form-control"
+                      ref={(el) => (fieldRefs.current.SCHL_CLASS_DURATION = el)}
+                      className={`form-control${errors.SCHL_CLASS_DURATION ? ' form-input-error' : ''}`}
                       value={formData.SCHL_CLASS_DURATION}
-                      onChange={(e) => setFormData({ ...formData, SCHL_CLASS_DURATION: parseInt(e.target.value, 10) || 45 })}
+                      onChange={(e) => {
+                        const raw = e.target.value
+                        setFormData({ ...formData, SCHL_CLASS_DURATION: raw === '' ? '' : parseInt(raw, 10) })
+                        if (errors.SCHL_CLASS_DURATION) setErrors((prev) => ({ ...prev, SCHL_CLASS_DURATION: '' }))
+                      }}
                       required
                     />
+                    {errors.SCHL_CLASS_DURATION && <span className="form-error-msg">{errors.SCHL_CLASS_DURATION}</span>}
                   </div>
 
                   <div className="form-group">
                     <label className="form-label">Start Time</label>
                     <input
                       type="time"
+                      ref={(el) => (fieldRefs.current.SCHL_CLASS_FRM = el)}
                       className={`form-control${errors.SCHL_CLASS_FRM ? ' form-input-error' : ''}`}
                       value={formData.SCHL_CLASS_FRM}
-                      onChange={(e) => setFormData({ ...formData, SCHL_CLASS_FRM: e.target.value })}
+                      onChange={(e) => {
+                        setFormData({ ...formData, SCHL_CLASS_FRM: e.target.value })
+                        if (errors.SCHL_CLASS_FRM) setErrors((prev) => ({ ...prev, SCHL_CLASS_FRM: '' }))
+                      }}
                     />
                     {errors.SCHL_CLASS_FRM && <span className="form-error-msg">{errors.SCHL_CLASS_FRM}</span>}
                   </div>
@@ -456,9 +486,13 @@ export default function ClassMatrix() {
                     <label className="form-label">End Time</label>
                     <input
                       type="time"
+                      ref={(el) => (fieldRefs.current.SCHL_CLASS_TO = el)}
                       className={`form-control${errors.SCHL_CLASS_TO ? ' form-input-error' : ''}`}
                       value={formData.SCHL_CLASS_TO}
-                      onChange={(e) => setFormData({ ...formData, SCHL_CLASS_TO: e.target.value })}
+                      onChange={(e) => {
+                        setFormData({ ...formData, SCHL_CLASS_TO: e.target.value })
+                        if (errors.SCHL_CLASS_TO) setErrors((prev) => ({ ...prev, SCHL_CLASS_TO: '' }))
+                      }}
                     />
                     {errors.SCHL_CLASS_TO && <span className="form-error-msg">{errors.SCHL_CLASS_TO}</span>}
                   </div>

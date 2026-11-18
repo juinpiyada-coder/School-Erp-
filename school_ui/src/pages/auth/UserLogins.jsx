@@ -5,7 +5,13 @@ import { FaPlus, FaTrash, FaEdit, FaUserCircle, FaSearch, FaCamera, FaTimes, FaU
 import { createPortal } from 'react-dom'
 import useDebouncedValue from '../../hooks/useDebouncedValue'
 import usePagination from '../../hooks/usePagination'
+import { scrollToFirstError } from '../../lib/formValidation'
 import { toast } from 'react-toastify'
+
+const USER_FIELD_ORDER = [
+  'user_id', 'user_first_name', 'user_last_name', 'user_email_id',
+  'user_passwd', 'user_role'
+]
 
 export default function UserLogins() {
   const [users, setUsers] = useState([])
@@ -18,6 +24,7 @@ export default function UserLogins() {
   const [editingUser, setEditingUser] = useState(null)
   const [errors, setErrors] = useState({})
   const fileInputRef = useRef(null)
+  const fieldRefs = useRef({})
 
   const currentUser = JSON.parse(sessionStorage.getItem('e_school_user') || '{}')
   const userRole = (currentUser?.user_role || currentUser?.role || '').toLowerCase()
@@ -151,8 +158,8 @@ export default function UserLogins() {
     const emailTrimmed = formData.user_email_id.trim()
     if (!emailTrimmed) {
       errs.user_email_id = 'Email address is required.'
-    } else if (!/^[a-zA-Z._-]+@[a-zA-Z.-]+\.[a-zA-Z]{2,}$/.test(emailTrimmed)) {
-      errs.user_email_id = 'Please enter a valid email address (e.g. name@school.edu). Numbers and symbols like $, % are not allowed.'
+    } else if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(emailTrimmed)) {
+      errs.user_email_id = 'Please enter a valid email address (e.g. name@school.edu).'
     }
     
     if (!editingUser) {
@@ -164,6 +171,7 @@ export default function UserLogins() {
     if (!formData.user_role) errs.user_role = 'Please select a role.'
     if (Object.keys(errs).length > 0) {
       setErrors(errs)
+      scrollToFirstError(errs, fieldRefs.current, USER_FIELD_ORDER)
       return
     }
     try {
@@ -385,7 +393,7 @@ export default function UserLogins() {
               <h2 className="modal-title">{editingUser ? 'Edit User Account' : 'Create User Account'}</h2>
               <button className="btn-icon" onClick={() => setIsModalOpen(false)}>×</button>
             </div>
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit} noValidate>
               <div className="modal-body" style={{ maxHeight: '72vh', overflowY: 'auto' }}>
                 
                 {/* User Image Upload Section */}
@@ -471,10 +479,14 @@ export default function UserLogins() {
                   <label className="form-label">User ID (Username) <span className="form-required">*</span></label>
                   <input
                     type="text"
+                    ref={(el) => (fieldRefs.current.user_id = el)}
                     className={`form-control${errors.user_id ? ' form-input-error' : ''}`}
                     placeholder="e.g. john_doe"
                     value={formData.user_id}
-                    onChange={(e) => setFormData({ ...formData, user_id: e.target.value.replace(/[^a-zA-Z0-9_.]/g, '') })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, user_id: e.target.value.replace(/[^a-zA-Z0-9_.]/g, '') })
+                      if (errors.user_id) setErrors((prev) => ({ ...prev, user_id: '' }))
+                    }}
                     required
                   />
                   {errors.user_id && <span className="form-error-msg">{errors.user_id}</span>}
@@ -485,10 +497,14 @@ export default function UserLogins() {
                     <label className="form-label">First Name</label>
                     <input
                       type="text"
+                      ref={(el) => (fieldRefs.current.user_first_name = el)}
                       className={`form-control${errors.user_first_name ? ' form-input-error' : ''}`}
                       placeholder="e.g. John"
                       value={formData.user_first_name}
-                      onChange={(e) => setFormData({ ...formData, user_first_name: e.target.value.replace(/[^a-zA-Z\s]/g, '') })}
+                      onChange={(e) => {
+                        setFormData({ ...formData, user_first_name: e.target.value.replace(/[^a-zA-Z\s]/g, '') })
+                        if (errors.user_first_name) setErrors((prev) => ({ ...prev, user_first_name: '' }))
+                      }}
                     />
                     {errors.user_first_name && <span className="form-error-msg">{errors.user_first_name}</span>}
                   </div>
@@ -496,10 +512,14 @@ export default function UserLogins() {
                     <label className="form-label">Last Name</label>
                     <input
                       type="text"
+                      ref={(el) => (fieldRefs.current.user_last_name = el)}
                       className={`form-control${errors.user_last_name ? ' form-input-error' : ''}`}
                       placeholder="e.g. Doe"
                       value={formData.user_last_name}
-                      onChange={(e) => setFormData({ ...formData, user_last_name: e.target.value.replace(/[^a-zA-Z\s]/g, '') })}
+                      onChange={(e) => {
+                        setFormData({ ...formData, user_last_name: e.target.value.replace(/[^a-zA-Z\s]/g, '') })
+                        if (errors.user_last_name) setErrors((prev) => ({ ...prev, user_last_name: '' }))
+                      }}
                     />
                     {errors.user_last_name && <span className="form-error-msg">{errors.user_last_name}</span>}
                   </div>
@@ -509,13 +529,15 @@ export default function UserLogins() {
                   <label className="form-label">Email Address <span className="form-required">*</span></label>
                   <input
                     type="email"
+                    ref={(el) => (fieldRefs.current.user_email_id = el)}
                     className={`form-control${errors.user_email_id ? ' form-input-error' : ''}`}
                     placeholder="e.g. john@school.edu"
                     value={formData.user_email_id}
                     onChange={(e) => {
-                      // Disallow numbers and special characters like $, %, &, *, etc. Only allow letters, @, ., _, -
-                      const cleaned = e.target.value.toLowerCase().replace(/[^a-z@._-]/g, '')
+                      // Allow letters, digits and standard email characters; strip spaces and invalid symbols.
+                      const cleaned = e.target.value.toLowerCase().replace(/\s/g, '').replace(/[^a-z0-9@._%+-]/g, '')
                       setFormData({ ...formData, user_email_id: cleaned })
+                      if (errors.user_email_id) setErrors((prev) => ({ ...prev, user_email_id: '' }))
                     }}
                     required
                   />
@@ -526,10 +548,14 @@ export default function UserLogins() {
                   <label className="form-label">Password {!editingUser && <span className="form-required">*</span>} <span className="form-hint">(min 6 chars)</span></label>
                   <input
                     type="password"
+                    ref={(el) => (fieldRefs.current.user_passwd = el)}
                     className={`form-control${errors.user_passwd ? ' form-input-error' : ''}`}
                     placeholder={editingUser ? "Leave blank to keep unchanged" : "Enter password"}
                     value={formData.user_passwd}
-                    onChange={(e) => setFormData({ ...formData, user_passwd: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, user_passwd: e.target.value })
+                      if (errors.user_passwd) setErrors((prev) => ({ ...prev, user_passwd: '' }))
+                    }}
                     required={!editingUser}
                   />
                   {errors.user_passwd && <span className="form-error-msg">{errors.user_passwd}</span>}
@@ -541,7 +567,7 @@ export default function UserLogins() {
                     {isSuperAdmin && <span style={{ fontSize: '0.74rem', color: 'var(--clr-accent)', marginLeft: '8px', fontWeight: 'normal' }}>(Super Admin: select multiple roles)</span>}
                   </label>
                   {isSuperAdmin ? (
-                    <div className="grid-auto-md" style={{
+                    <div ref={(el) => (fieldRefs.current.user_role = el)} className="grid-auto-md" style={{
                       gap: '8px',
                       maxHeight: '180px',
                       overflowY: 'auto',
@@ -591,9 +617,13 @@ export default function UserLogins() {
                     </div>
                   ) : (
                     <select
+                      ref={(el) => (fieldRefs.current.user_role = el)}
                       className={`form-control${errors.user_role ? ' form-input-error' : ''}`}
                       value={formData.user_role}
-                      onChange={(e) => setFormData({ ...formData, user_role: e.target.value })}
+                      onChange={(e) => {
+                        setFormData({ ...formData, user_role: e.target.value })
+                        if (errors.user_role) setErrors((prev) => ({ ...prev, user_role: '' }))
+                      }}
                       required
                     >
                       <option value="" disabled>Select Role</option>

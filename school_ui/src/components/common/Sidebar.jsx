@@ -26,7 +26,11 @@ const ROLES_CONFIG = {
     ]},
     { label: 'Institution', items: [
       { to: '/school/details', icon: FaBuilding, label: 'School Details' },
+      { to: '/school/branches', icon: FaCodeBranch, label: 'Associate Branches' },
       { to: '/school/matrix', icon: FaCalendarAlt, label: 'Schedule Matrix' }
+    ]},
+    { label: 'Finance & Fees', items: [
+      { to: '/finance/fees', icon: FaMoneyBillWave, label: 'Fee Management' }
     ]},
     { label: 'System & Reports', items: [
       { to: '/reports', icon: FaChartBar, label: 'Reports' },
@@ -230,6 +234,8 @@ const ICON_MAP = {
   '/reports': FaChartBar,
   '/settings': FaCog,
   '/notifications': FaBell,
+  '/finance/fees': FaMoneyBillWave,
+  '/finance': FaMoneyBillWave,
   '/student/routine': FaCalendarAlt,
   '/student/class-completion': FaBookOpen,
   '/student/attendance-report': FaClipboardCheck,
@@ -260,6 +266,7 @@ function resolveMenuIcon(url, label) {
   if (text.includes('parent') || text.includes('guard')) return FaUserFriends
   if (text.includes('student') || text.includes('ward')) return FaUserGraduate
   if (text.includes('sched') || text.includes('routine')) return FaCalendarAlt
+  if (text.includes('fee') || text.includes('fine') || text.includes('pay') || text.includes('dues')) return FaMoneyBillWave
   if (text.includes('attend') || text.includes('leave')) return FaClipboardCheck
   if (text.includes('report') || text.includes('financ')) return FaChartBar
   if (text.includes('setting') || text.includes('profile')) return FaCog

@@ -97,9 +97,8 @@ const EMPTY_FORM = {
 }
 
 const STUDENT_FIELD_ORDER = [
-  'name', 'aadhar', 'email', 'phone', 'state', 'district', 'pincode',
-  'schoolId', 'branch_id', 'classSessionId', 'parentLinked', 'gender',
-  'dob', 'userId', 'password'
+  'name', 'aadhar', 'branch_id', 'selectedClassId', 'classSessionId',
+  'gender', 'dob', 'email', 'userId', 'password', 'parentLinked', 'guardianRelation'
 ]
 
 export default function Students() {
@@ -356,11 +355,25 @@ export default function Students() {
     if (!formData.aadhar.trim()) errs.aadhar = 'Aadhar Number is required.'
     else if (!/^\d{12}$/.test(formData.aadhar.trim())) errs.aadhar = 'Aadhar number must be exactly 12 digits.'
     if (!isBranchAdmin && !formData.branch_id) errs.branch_id = 'Please select a branch.'
+    if (!formData.selectedClassId) errs.selectedClassId = 'Please select a class.'
     if (!formData.classSessionId) errs.classSessionId = 'Please select a class session & section.'
     if (!formData.parentLinked) errs.parentLinked = 'Please select a guardian from the dropdown.'
     if (!formData.gender) errs.gender = 'Please select a gender.'
     if (!formData.dob) errs.dob = 'Date of birth is required.'
     else if (new Date(formData.dob) > new Date()) errs.dob = 'Date of birth cannot be in the future.'
+    const emailTrimmed = formData.email ? formData.email.trim() : ''
+    if (emailTrimmed && !/^\S+@\S+\.\S+$/.test(emailTrimmed)) {
+      errs.email = 'Please enter a valid email address.'
+    }
+    const userIdTrimmed = formData.userId ? formData.userId.trim() : ''
+    if (userIdTrimmed) {
+      if (!/^[a-zA-Z0-9._@-]+$/.test(userIdTrimmed)) {
+        errs.userId = 'User ID can only contain letters, numbers, dots, underscores, @ and hyphens.'
+      } else if (userIdTrimmed.length < 3) {
+        errs.userId = 'User ID must be at least 3 characters long.'
+      }
+    }
+    if (!formData.guardianRelation) errs.guardianRelation = 'Please select the relationship to the student.'
     if (formData.userId && formData.userId.trim() && !editingId && !formData.password) {
       errs.password = 'Password is required when providing a Login ID.'
     }
@@ -605,7 +618,7 @@ export default function Students() {
           </>
         }
       >
-        <form id="student-form" onSubmit={handleSubmit}>
+        <form id="student-form" onSubmit={handleSubmit} noValidate>
           <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-md)' }}>
 
             {/* ── Student Details ── */}
@@ -686,7 +699,7 @@ export default function Students() {
             <div className="form-row-2col">
               <div className="form-group">
                 <label className="form-label">Full Name <span className="form-required">*</span></label>
-                <input type="text" ref={(el) => (fieldRefs.current.name = el)} className={`form-input${errors.name ? ' form-input-error' : ''}`} placeholder="e.g. Rohan Sharma" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value.replace(/[^a-zA-Z\s]/g, '') })} required />
+                <input type="text" ref={(el) => (fieldRefs.current.name = el)} className={`form-input${errors.name ? ' form-input-error' : ''}`} placeholder="e.g. Rohan Sharma" value={formData.name} onChange={(e) => { setFormData({ ...formData, name: e.target.value.replace(/[^a-zA-Z\s]/g, '') }); if (errors.name) setErrors((prev) => ({ ...prev, name: '' })) }} required />
                 {errors.name && <span className="form-error-msg"><FaExclamationCircle /> {errors.name}</span>}
               </div>
               <div className="form-group">
@@ -699,7 +712,7 @@ export default function Students() {
                   className={`form-input${errors.aadhar ? ' form-input-error' : ''}`} 
                   placeholder="e.g. 123456789012" 
                   value={formData.aadhar} 
-                  onChange={(e) => setFormData({ ...formData, aadhar: e.target.value.replace(/[^0-9]/g, '').slice(0, 12) })} 
+                  onChange={(e) => { setFormData({ ...formData, aadhar: e.target.value.replace(/[^0-9]/g, '').slice(0, 12) }); if (errors.aadhar) setErrors((prev) => ({ ...prev, aadhar: '' })) }} 
                   required 
                 />
                 {errors.aadhar && <span className="form-error-msg"><FaExclamationCircle /> {errors.aadhar}</span>}
@@ -716,6 +729,7 @@ export default function Students() {
                   onChange={(e) => {
                     const bId = e.target.value
                     setFormData(prev => ({ ...prev, branch_id: bId, selectedClassId: '', classSessionId: '' }))
+                    if (errors.branch_id) setErrors((prev) => ({ ...prev, branch_id: '' }))
                   }}
                   required
                 >
@@ -735,11 +749,13 @@ export default function Students() {
               <div className="form-group">
                 <label className="form-label">Select Class <span className="form-required">*</span></label>
                 <select
-                  className="form-input"
+                  ref={(el) => (fieldRefs.current.selectedClassId = el)}
+                  className={`form-input${errors.selectedClassId ? ' form-input-error' : ''}`}
                   value={formData.selectedClassId}
                   onChange={(e) => {
                     const clsId = e.target.value
                     setFormData(prev => ({ ...prev, selectedClassId: clsId, classSessionId: '' }))
+                    if (errors.selectedClassId) setErrors((prev) => ({ ...prev, selectedClassId: '' }))
                   }}
                   required
                 >
@@ -750,6 +766,7 @@ export default function Students() {
                       <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
                 </select>
+                {errors.selectedClassId && <span className="form-error-msg"><FaExclamationCircle /> {errors.selectedClassId}</span>}
               </div>
 
               <div className="form-group">
@@ -758,7 +775,7 @@ export default function Students() {
                   ref={(el) => (fieldRefs.current.classSessionId = el)}
                   className={`form-input${errors.classSessionId ? ' form-input-error' : ''}`}
                   value={formData.classSessionId}
-                  onChange={(e) => setFormData({ ...formData, classSessionId: e.target.value })}
+                  onChange={(e) => { setFormData({ ...formData, classSessionId: e.target.value }); if (errors.classSessionId) setErrors((prev) => ({ ...prev, classSessionId: '' })) }}
                   required
                 >
                   <option value="">-- Choose Section &amp; Session --</option>
@@ -775,7 +792,7 @@ export default function Students() {
             <div className="form-row-2col">
               <div className="form-group">
                 <label className="form-label">Gender <span className="form-required">*</span></label>
-                <select ref={(el) => (fieldRefs.current.gender = el)} className={`form-input${errors.gender ? ' form-input-error' : ''}`} value={formData.gender} onChange={(e) => setFormData({ ...formData, gender: e.target.value })} required>
+                <select ref={(el) => (fieldRefs.current.gender = el)} className={`form-input${errors.gender ? ' form-input-error' : ''}`} value={formData.gender} onChange={(e) => { setFormData({ ...formData, gender: e.target.value }); if (errors.gender) setErrors((prev) => ({ ...prev, gender: '' })) }} required>
                   <option value="M">Male</option>
                   <option value="F">Female</option>
                   <option value="Other">Other</option>
@@ -784,7 +801,7 @@ export default function Students() {
               </div>
               <div className="form-group">
                 <label className="form-label">Date of Birth <span className="form-required">*</span></label>
-                <input type="date" ref={(el) => (fieldRefs.current.dob = el)} className={`form-input${errors.dob ? ' form-input-error' : ''}`} value={formData.dob} onChange={(e) => setFormData({ ...formData, dob: e.target.value })} required />
+                <input type="date" ref={(el) => (fieldRefs.current.dob = el)} className={`form-input${errors.dob ? ' form-input-error' : ''}`} value={formData.dob} onChange={(e) => { setFormData({ ...formData, dob: e.target.value }); if (errors.dob) setErrors((prev) => ({ ...prev, dob: '' })) }} required />
                 {errors.dob && <span className="form-error-msg"><FaExclamationCircle /> {errors.dob}</span>}
               </div>
             </div>
@@ -794,7 +811,8 @@ export default function Students() {
                 <label className="form-label">Email Address</label>
                 <input
                   type="email"
-                  className="form-input"
+                  ref={(el) => (fieldRefs.current.email = el)}
+                  className={`form-input${errors.email ? ' form-input-error' : ''}`}
                   placeholder="e.g. student@example.com"
                   value={formData.email}
                   onChange={(e) => {
@@ -804,18 +822,25 @@ export default function Students() {
                       email: val,
                       userId: (!editingId || prev.userId === prev.email?.trim().toLowerCase() || !prev.userId) ? val.trim().toLowerCase() : prev.userId
                     }));
+                    if (errors.email) setErrors((prev) => ({ ...prev, email: '' }))
                   }}
                 />
+                {errors.email && <span className="form-error-msg"><FaExclamationCircle /> {errors.email}</span>}
               </div>
               <div className="form-group">
                 <label className="form-label">User ID (Login)</label>
                 <input
                   type="text"
-                  className="form-input"
+                  ref={(el) => (fieldRefs.current.userId = el)}
+                  className={`form-input${errors.userId ? ' form-input-error' : ''}`}
                   placeholder="e.g. student@example.com"
                   value={formData.userId}
-                  onChange={(e) => setFormData({ ...formData, userId: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, userId: e.target.value.replace(/\s+/g, '') })
+                    if (errors.userId) setErrors((prev) => ({ ...prev, userId: '' }))
+                  }}
                 />
+                {errors.userId && <span className="form-error-msg"><FaExclamationCircle /> {errors.userId}</span>}
               </div>
             </div>
 
@@ -842,7 +867,7 @@ export default function Students() {
                   className={`form-input${errors.password ? ' form-input-error' : ''}`}
                   placeholder={editingId ? '•••••••• (leave blank to keep current)' : 'Enter login password'}
                   value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  onChange={(e) => { setFormData({ ...formData, password: e.target.value }); if (errors.password) setErrors((prev) => ({ ...prev, password: '' })) }}
                   style={{ paddingRight: '2.5rem' }}
                 />
                 <button
@@ -891,6 +916,7 @@ export default function Students() {
                       parentLinked: pId,
                       guardianRelation: prev.guardianRelation || (found ? found.relation : '')
                     }))
+                    if (errors.parentLinked) setErrors((prev) => ({ ...prev, parentLinked: '' }))
                   }}
                   required
                 >
@@ -907,9 +933,10 @@ export default function Students() {
               <div className="form-group">
                 <label className="form-label">Relationship to Student <span className="form-required">*</span></label>
                 <select
-                  className="form-input"
+                  ref={(el) => (fieldRefs.current.guardianRelation = el)}
+                  className={`form-input${errors.guardianRelation ? ' form-input-error' : ''}`}
                   value={formData.guardianRelation}
-                  onChange={(e) => setFormData({ ...formData, guardianRelation: e.target.value })}
+                  onChange={(e) => { setFormData({ ...formData, guardianRelation: e.target.value }); if (errors.guardianRelation) setErrors((prev) => ({ ...prev, guardianRelation: '' })) }}
                   required
                 >
                   <option value="">Select Relation</option>
@@ -924,6 +951,7 @@ export default function Students() {
                   <option value="Aunt">Aunt</option>
                   <option value="Other">Other</option>
                 </select>
+                {errors.guardianRelation && <span className="form-error-msg"><FaExclamationCircle /> {errors.guardianRelation}</span>}
               </div>
             </div>
           </div>

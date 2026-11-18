@@ -24,6 +24,41 @@ class RoleLink {
 
         // Enforce the 4 requested modules for Student and Parent
         $this->syncStudentParentLinks();
+
+        // Ensure Finance / Fee Management link exists for administrative roles
+        $this->ensureFinanceLinks();
+    }
+
+    public function ensureFinanceLinks() {
+        try {
+            $adminRoles = [
+                ['R_SUPERADMIN', 'Fee Management', '/finance/fees', 5, 'Finance & Fees'],
+                ['R_SCHOOLADMIN', 'Fee Management', '/finance/fees', 10, 'Finance & Fees'],
+                ['R_BRANCHADMIN', 'Fee Management', '/finance/fees', 10, 'Finance & Fees'],
+                ['R_SCHOOLEXECUTIVE', 'Fee Management', '/finance/fees', 3, 'Performance & Finance'],
+                ['R_BRANCHEXECUTIVE', 'Fee Management', '/finance/fees', 3, 'Performance & Finance'],
+            ];
+
+            $checkStmt = $this->db->prepare("SELECT COUNT(*) FROM SM_ROLE_LINKS WHERE SM_RL_ROLE_ID = ? AND (SM_RL_LINK_URL = '/finance/fees' OR SM_RL_LINK_URL = '/finance')");
+            $insertStmt = $this->db->prepare("
+                INSERT INTO SM_ROLE_LINKS (SM_RL_ID, SM_RL_ROLE_ID, SM_RL_LINK_DESC, SM_RL_LINK_URL, SM_RL_LINK_SRL, SM_RL_SUBMENU, SM_RL_STATUS, SM_RL_CREATEDBY, SM_RL_CREATEDAT)
+                VALUES (?, ?, ?, ?, ?, ?, 'ACTIVE', 'usr_system', NOW())
+            ");
+
+            foreach ($adminRoles as $item) {
+                $checkStmt->execute([$item[0]]);
+                if ((int)$checkStmt->fetchColumn() === 0) {
+                    $insertStmt->execute([
+                        strtoupper(uniqid('RL_FEE_')),
+                        $item[0],
+                        $item[1],
+                        $item[2],
+                        $item[3],
+                        $item[4]
+                    ]);
+                }
+            }
+        } catch (Exception $e) {}
     }
 
     public function syncStudentParentLinks() {
