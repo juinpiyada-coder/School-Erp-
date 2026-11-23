@@ -1,0 +1,96 @@
+-- Finance Tables Creation with matching charset utf8mb4
+USE sms_db;
+
+SET FOREIGN_KEY_CHECKS = 0;
+
+-- 1. Branch Class Fee Master
+CREATE TABLE IF NOT EXISTS `SMS_BRCH_CLASS_FEE` (
+  `SMS_BR_CLS_FEE_ID` varchar(100) NOT NULL,
+  `SMS_BR_CLS_ID` varchar(100) DEFAULT NULL,
+  `SMS_BR_FEE_TOTAL` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `SMS_BR_FEE_YEAR` varchar(20) DEFAULT NULL,
+  `SMS_BR_FEE_CREATEDBY` varchar(100) DEFAULT NULL,
+  `SMS_BR_FEE_CREATEDAT` datetime DEFAULT current_timestamp(),
+  PRIMARY KEY (`SMS_BR_CLS_FEE_ID`),
+  KEY `IDX_FEE_CLASS_ID` (`SMS_BR_CLS_ID`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 2. Class Fee Breakdown Components (Tuition, Lab, Exam, Transport, Library)
+CREATE TABLE IF NOT EXISTS `SMS_BRCH_CLS_FEE_DTLS` (
+  `SMS_BRCH_FEE_DTLS_ID` varchar(100) NOT NULL,
+  `SMS_BRCH_CLS_FEE_ID` varchar(100) NOT NULL,
+  `SMS_FEE_DESC` varchar(150) NOT NULL,
+  `SMS_FEE_AMT` decimal(12,2) NOT NULL DEFAULT 0.00,
+  PRIMARY KEY (`SMS_BRCH_FEE_DTLS_ID`),
+  KEY `IDX_FEE_HEADER_ID` (`SMS_BRCH_CLS_FEE_ID`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 3. Student Penalties & Fines
+CREATE TABLE IF NOT EXISTS `SMS_STU_FINE` (
+  `SMS_STU_FINE_ID` varchar(100) NOT NULL,
+  `SMS_FINE_STU_ID` varchar(100) NOT NULL,
+  `SMS_FINE_AMOUNT` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `SMS_FINE_PAID` varchar(1) DEFAULT 'N',
+  `SMS_FINE_DESC` varchar(255) DEFAULT NULL,
+  `SMS_FINE_POSTED` datetime DEFAULT current_timestamp(),
+  `SMS_FINE_PAID_DT` datetime DEFAULT NULL,
+  PRIMARY KEY (`SMS_STU_FINE_ID`),
+  KEY `IDX_FINE_STUDENT_ID` (`SMS_FINE_STU_ID`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 4. Student Fee Schedule / Allocation
+CREATE TABLE IF NOT EXISTS `SMS_STU_FEE_MAP` (
+  `SMS_STU_FEE_MAP_ID` varchar(100) NOT NULL,
+  `SMS_STU_ID` varchar(100) NOT NULL,
+  `SMS_STU_FEE_AMT` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `SMS_STU_FEE_MTH` varchar(20) NOT NULL,
+  `SMS_STU_DISCOUNT` decimal(12,2) DEFAULT 0.00,
+  `SMS_STU_FEE_PAID_FULL` varchar(1) DEFAULT 'N',
+  PRIMARY KEY (`SMS_STU_FEE_MAP_ID`),
+  KEY `IDX_FEEMAP_STUDENT_ID` (`SMS_STU_ID`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 5. Student Fee Payment Transactions & Receipts
+CREATE TABLE IF NOT EXISTS `SMS_STU_FEE_PAYMENT` (
+  `SMS_FEE_PMT_ID` varchar(100) NOT NULL,
+  `SMS_STU_ID` varchar(100) NOT NULL,
+  `SMS_STU_FEE_MAP_ID` varchar(100) DEFAULT NULL,
+  `SMS_FEE_PAID_AMT` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `SMS_FEE_PAID_DT` datetime DEFAULT current_timestamp(),
+  `SMS_FEE_PMT_MODE` varchar(20) DEFAULT 'CASH',
+  `SMS_FEE_RCPT_NO` varchar(100) DEFAULT NULL,
+  `SMS_FEE_RCPT_IMG` longtext DEFAULT NULL,
+  PRIMARY KEY (`SMS_FEE_PMT_ID`),
+  KEY `IDX_PMT_STUDENT_ID` (`SMS_STU_ID`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 6. Branch Fee Collection Summary
+CREATE TABLE IF NOT EXISTS `BRCH_FEE_COLLECTED` (
+  `BRCH_FEE_COLL_ID` varchar(100) NOT NULL,
+  `BRCH_ID` varchar(100) NOT NULL,
+  `BRCH_FEE_AMT` decimal(15,2) NOT NULL DEFAULT 0.00,
+  `BRCH_FEE_MTH` varchar(20) DEFAULT NULL,
+  `BRCH_FEE_YR` varchar(20) DEFAULT NULL,
+  `BRCH_FEE_DELAY` int(11) DEFAULT 0,
+  PRIMARY KEY (`BRCH_FEE_COLL_ID`),
+  KEY `IDX_COLL_BRANCH_ID` (`BRCH_ID`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Also ensure SM_ROLE_LINKS exists so role links sync smoothly
+CREATE TABLE IF NOT EXISTS `SM_ROLE_LINKS` (
+  `SM_RL_ID` varchar(100) NOT NULL,
+  `SM_RL_ROLE_ID` varchar(100) NOT NULL,
+  `SM_RL_LINK_DESC` varchar(100) DEFAULT NULL,
+  `SM_RL_LINK_URL` varchar(100) DEFAULT NULL,
+  `SM_RL_LINK_SRL` int(11) DEFAULT 0,
+  `SM_RL_SUBMENU` varchar(50) DEFAULT NULL,
+  `SM_RL_STATUS` varchar(20) DEFAULT 'ACTIVE',
+  `SM_RL_CREATEDBY` varchar(100) DEFAULT NULL,
+  `SM_RL_CREATEDAT` datetime DEFAULT current_timestamp(),
+  `SM_RL_UPDATEDBY` varchar(100) DEFAULT NULL,
+  `SM_RL_UPDATEDAT` datetime DEFAULT NULL,
+  PRIMARY KEY (`SM_RL_ID`),
+  KEY `IDX_ROLE_ID` (`SM_RL_ROLE_ID`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+SET FOREIGN_KEY_CHECKS = 1;
