@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'academic/academic_theme.dart';
 import 'auth/login_screen.dart';
 import 'common/shorebird_service.dart';
 
@@ -13,6 +14,12 @@ Future<void> main() async {
     debugPrint("Warning: Could not load .env.production, falling back to default URL: $e");
   }
 
+  // Initialize cached dynamic theme settings
+  await AppTheme.initialize();
+
+  // Fetch updated whitelabel theme in the background from backend
+  AppTheme.syncWithServer();
+
   // Silent background check for Shorebird CodePush OTA patches
   ShorebirdUpdateService.checkForUpdateInBackground();
 
@@ -24,18 +31,28 @@ class MySkoolApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'MySkool ERP',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF005A9E),
-          primary: const Color(0xFF005A9E),
-        ),
-        scaffoldBackgroundColor: const Color(0xFFF8FAFC),
-      ),
-      home: const LoginScreen(),
+    return ListenableBuilder(
+      listenable: AppTheme(),
+      builder: (context, _) {
+        return MaterialApp(
+          title: AppTheme.liveAppName,
+          debugShowCheckedModeBanner: false,
+          theme: ThemeData(
+            useMaterial3: true,
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: AppTheme.livePrimary,
+              primary: AppTheme.livePrimary,
+            ),
+            scaffoldBackgroundColor: AppTheme.background,
+            appBarTheme: AppBarTheme(
+              backgroundColor: AppTheme.livePrimary,
+              foregroundColor: Colors.white,
+              elevation: 0,
+            ),
+          ),
+          home: const LoginScreen(),
+        );
+      },
     );
   }
 }

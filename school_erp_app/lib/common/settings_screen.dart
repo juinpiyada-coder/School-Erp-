@@ -114,11 +114,21 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
     if (!mounted) return;
     setState(() => _savingBranding = false);
 
+    if (!mounted) return;
     if (res['status'] == 'success' || res['success'] == true) {
+      // Immediately apply to global AppTheme across the entire app
+      await AppTheme.updateTheme(
+        primaryHex: _primaryColor,
+        secondaryHex: _secondaryColor,
+        appNameVal: _appNameController.text.trim(),
+      );
+
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Whitelabel branding updated successfully!')),
       );
     } else {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(res['message'] ?? 'Failed to update whitelabel branding')),
       );
